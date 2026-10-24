@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { DeleteImageCommand } from "@editor/tools/pdfTextEditor/commands/DeleteImageCommand";
-import { ReplaceImageCommand } from "@editor/tools/pdfTextEditor/commands/ReplaceImageCommand";
+import { ReplaceImageCommand, type ImageCropBounds } from "@editor/tools/pdfTextEditor/commands/ReplaceImageCommand";
 import type { DecodedImage } from "@editor/utils/pdfiumBitmapUtils";
 import { DeleteObjectCommand } from "@editor/tools/pdfTextEditor/commands/DeleteObjectCommand";
 import { DeleteShapeCommand } from "@editor/tools/pdfTextEditor/commands/DeleteShapeCommand";
@@ -223,6 +223,7 @@ export function useSelectionActions(store: EditorStore) {
       imageId: string,
       image: DecodedImage,
       jpegBytes?: Uint8Array,
+      crop?: ImageCropBounds,
     ) => {
       const doc = store.document;
       if (!doc) return;
@@ -237,6 +238,7 @@ export function useSelectionActions(store: EditorStore) {
           imageId: img.id,
           image,
           jpegBytes,
+          crop,
         }),
       );
     },
@@ -244,7 +246,7 @@ export function useSelectionActions(store: EditorStore) {
   );
 
   const replaceSelectedImage = useCallback(
-    (image: DecodedImage, jpegBytes?: Uint8Array) => {
+    (image: DecodedImage, jpegBytes?: Uint8Array, crop?: ImageCropBounds) => {
       const sel = store.selection.value;
       if (sel.imageIds.length !== 1) return;
       const doc = store.document;
@@ -253,7 +255,7 @@ export function useSelectionActions(store: EditorStore) {
         .flatMap((p) => p.images)
         .find((i) => i.id === sel.imageIds[0]);
       if (!img) return;
-      replaceImageById(img.pageIndex, img.id, image, jpegBytes);
+      replaceImageById(img.pageIndex, img.id, image, jpegBytes, crop);
     },
     [store, replaceImageById],
   );
