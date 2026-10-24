@@ -447,20 +447,30 @@ export function useToolbarController(
     return !!run && (run.paragraphSlotCount ?? 0) >= 2;
   }, [state.pages, selection]);
 
-  const [cropPixels, setCropPixels] = useState<ImagePixels | null>(null);
+  const [cropTarget, setCropTarget] = useState<{
+    pixels: ImagePixels;
+    imageId: string;
+    pageIndex: number;
+    document: EditorStore["document"];
+  } | null>(null);
   const onCropImage = useCallback(() => {
     const doc = store.document;
     if (!doc || selection.imageIds.length !== 1) return;
-    const target = doc.loadedPages().flatMap(p => p.images).find(im => im.id === selection.imageIds[0]);
+    const target = doc.loadedPages()
+      .flatMap(p => p.images)
+      .find(im => im.id === selection.imageIds[0]);
     if (!target?.pdfiumObjPtr || target.locked) return;
     const pixels = readImageObjectPixels(doc, target.pageIndex, target.pdfiumObjPtr);
-    if (pixels) setCropPixels(pixels);
+    if (pixels) setCropTarget({
+      pixels, imageId: target.id, pageIndex: target.pageIndex, document: doc,
+    });
   }, [store, selection.imageIds]);
   const onApplyImageCrop = useCallback((pixels: ImagePixels, crop: ImageCropBounds) => {
-    sel.replaceSelectedImage(pixels, undefined, crop);
-    setCropPixels(null);
-  }, [sel]);
-
+    if (cropTarget && store.document === cropTarget.document) {
+      sel.replaceImageById(cropTarget.pageIndex, cropTarget.imageId, pixels, undefined, crop);
+    }
+    setCropTarget(null);
+  }, [sel, cropTarget, store]);
   const onReplaceImage = useCallback(() => {
     void (async () => {
       const file = await pickImageFile();
@@ -533,9 +543,9 @@ export function useToolbarController(
     onTransformImage,
     onReplaceImage,
     onCropImage,
-    cropPixels,
+    cropPixels: cropTarget?.pixels ?? null,
     onApplyImageCrop,
-    onCancelImageCrop: () => setCropPixels(null),
+    onCancelImageCrop: () => setCropTarget(null),
     onEditImageExternally,
     externalEditSupported: isExternalImageEditSupported(),
     selectionAllLocked,
