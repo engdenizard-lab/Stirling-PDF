@@ -42,6 +42,7 @@ import {
 } from "@editor/tools/pdfTextEditor/util/imagePicking";
 import { readImageObjectPixels } from "@editor/tools/pdfTextEditor/util/imagePixels";
 import type { ImagePixels } from "@editor/tools/pdfTextEditor/util/imagePixels";
+import type { ImageCropBounds } from "@editor/tools/pdfTextEditor/commands/ReplaceImageCommand";
 
 type AlignMode = "left" | "center-h" | "right" | "top" | "middle-v" | "bottom";
 
@@ -455,8 +456,8 @@ export function useToolbarController(
     const pixels = readImageObjectPixels(doc, target.pageIndex, target.pdfiumObjPtr);
     if (pixels) setCropPixels(pixels);
   }, [store, selection.imageIds]);
-  const onApplyImageCrop = useCallback((pixels: ImagePixels) => {
-    sel.replaceSelectedImage(pixels);
+  const onApplyImageCrop = useCallback((pixels: ImagePixels, crop: ImageCropBounds) => {
+    sel.replaceSelectedImage(pixels, undefined, crop);
     setCropPixels(null);
   }, [sel]);
 
