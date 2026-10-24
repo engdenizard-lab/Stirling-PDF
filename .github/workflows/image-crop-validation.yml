@@ -1,0 +1,28 @@
+name: Image crop validation
+on:
+  push:
+    branches:
+      - feature/image-crop
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  crop-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check TypeScript
+        run: npx tsc --noEmit -p tsconfig.core.vite.json
+      - name: Run image replacement and crop tests
+        run: npx vitest run --project core src/editor/core/tools/pdfTextEditor/__tests__/ReplaceImageCommand.test.ts
