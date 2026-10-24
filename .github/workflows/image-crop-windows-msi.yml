@@ -1,0 +1,57 @@
+name: Experimental Windows MSI (image crop)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-msi:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check desktop runtime resources
+        shell: pwsh
+        run: |
+          $jars = @(Get-ChildItem src-tauri/libs -Filter '*.jar' -ErrorAction SilentlyContinue)
+          $java = Test-Path 'src-tauri/runtime/jre/bin/java.exe'
+          if ($jars.Count -eq 0 -or -not $java) {
+            Write-Error "Desktop packaging requires bundled backend JAR(s) and a JRE at frontend/src-tauri/runtime/jre. The source checkout does not yet contain these build resources. Configure resource provisioning before publishing an installer."
+            exit 1
+          }
+      - name: Prepare isolated experimental Tauri configuration
+        shell: pwsh
+        run: |
+          $config = @{
+            productName = 'Stirling PDF Crop Experimental'
+            identifier = 'lab.engdenizard.stirlingcrop'
+            bundle = @{
+              createUpdaterArtifacts = $false
+              windows = @{ wix = @{ upgradeCode = 'c82da3ce-a461-4e34-a9a5-97f634c19031' } }
+            }
+            plugins = @{ updater = @{ active = $false } }
+          }
+          $config | ConvertTo-Json -Depth 12 | Set-Content -Path 'src-tauri/crop.experimental.conf.json' -Encoding utf8
+      - name: Compile experimental MSI
+        run: npx tauri build --bundles msi --config src-tauri/crop.experimental.conf.json
+      - name: Upload experimental installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: stirling-image-crop-windows-msi-unsigned
+          path: frontend/src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
+          retention-days: 7
