@@ -1,12 +1,13 @@
 import { useRef, useState } from "react";
 import { Modal, Button, Group, Stack, Text } from "@mantine/core";
 import type { ImagePixels } from "@editor/tools/pdfTextEditor/util/imagePixels";
+import type { ImageCropBounds } from "@editor/tools/pdfTextEditor/commands/ReplaceImageCommand";
 
 type Bounds = { l:number;t:number;r:number;b:number };
 type Corner = "tl"|"tr"|"bl"|"br";
 const limit=(x:number)=>Math.max(0,Math.min(1,x));
 
-export function ImageCropDialog({pixels,onApply,onClose}:{pixels:ImagePixels;onApply:(p:ImagePixels)=>void;onClose:()=>void}) {
+export function ImageCropDialog({pixels,onApply,onClose}:{pixels:ImagePixels;onApply:(p:ImagePixels, crop:ImageCropBounds)=>void;onClose:()=>void}) {
   const [bounds,setBounds]=useState<Bounds>({l:0,t:0,r:1,b:1});
   const active=useRef<Corner|null>(null);
   const source=useRef<HTMLCanvasElement|null>(null);
@@ -57,7 +58,7 @@ export function ImageCropDialog({pixels,onApply,onClose}:{pixels:ImagePixels;onA
     const w=Math.max(1,Math.ceil(bounds.r*pixels.width)-x),h=Math.max(1,Math.ceil(bounds.b*pixels.height)-y);
     const rgba=new Uint8Array(w*h*4);
     for(let row=0;row<h;row++)rgba.set(pixels.rgba.subarray(((y+row)*pixels.width+x)*4,((y+row)*pixels.width+x+w)*4),row*w*4);
-    onApply({width:w,height:h,rgba});
+    onApply({width:w,height:h,rgba}, {left:bounds.l,top:bounds.t,right:bounds.r,bottom:bounds.b});
   };
   return <Modal opened onClose={onClose} title="Recortar imagem" centered size="lg">
     <Stack gap="sm">
