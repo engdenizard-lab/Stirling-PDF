@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Modal, Button, Group, Stack, Text } from "@mantine/core";
 import type { ImagePixels } from "@editor/tools/pdfTextEditor/util/imagePixels";
 import type { ImageCropBounds } from "@editor/tools/pdfTextEditor/commands/ReplaceImageCommand";
+import { cropImagePixels } from "@editor/tools/pdfTextEditor/util/cropImagePixels";
 
 type Bounds = { l:number;t:number;r:number;b:number };
 type Corner = "tl"|"tr"|"bl"|"br";
@@ -54,11 +55,8 @@ export function ImageCropDialog({pixels,onApply,onClose}:{pixels:ImagePixels;onA
     }));
   };
   const apply=()=>{
-    const x=Math.floor(bounds.l*pixels.width),y=Math.floor(bounds.t*pixels.height);
-    const w=Math.max(1,Math.ceil(bounds.r*pixels.width)-x),h=Math.max(1,Math.ceil(bounds.b*pixels.height)-y);
-    const rgba=new Uint8Array(w*h*4);
-    for(let row=0;row<h;row++)rgba.set(pixels.rgba.subarray(((y+row)*pixels.width+x)*4,((y+row)*pixels.width+x+w)*4),row*w*4);
-    onApply({width:w,height:h,rgba}, {left:bounds.l,top:bounds.t,right:bounds.r,bottom:bounds.b});
+    const crop = {left:bounds.l,top:bounds.t,right:bounds.r,bottom:bounds.b};
+    onApply(cropImagePixels(pixels, crop), crop);
   };
   return <Modal opened onClose={onClose} title="Recortar imagem" centered size="lg">
     <Stack gap="sm">
