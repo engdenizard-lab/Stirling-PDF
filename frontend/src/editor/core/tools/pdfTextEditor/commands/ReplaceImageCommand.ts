@@ -15,6 +15,7 @@ import {
 } from "@editor/tools/pdfTextEditor/util/wasmScratch";
 import { copyTagMarks } from "@editor/tools/pdfTextEditor/pdfium/PdfiumTagMarks";
 
+export interface ImageCropBounds { left: number; top: number; right: number; bottom: number; }
 interface ZOrderModule {
   FPDFPage_InsertObjectAtIndex?: (
     page: number,
@@ -67,17 +68,22 @@ export class ReplaceImageCommand implements Command {
   private prevBounds: PageRect | null;
   private prevIndex: number;
   private nextObjPtr: number;
+  private readonly crop?: ImageCropBounds;
+  private nextMatrix: Affine | null = null;
+  private nextBounds: PageRect | null = null;
 
   constructor(opts: {
     pageIndex: number;
     imageId: string;
     image: DecodedImage;
     jpegBytes?: Uint8Array;
+    crop?: ImageCropBounds;
   }) {
     this.pageIndex = opts.pageIndex;
     this.imageId = opts.imageId;
     this.image = opts.image;
     this.jpegBytes = opts.jpegBytes;
+    this.crop = opts.crop;
     this.prevObjPtr = 0;
     this.prevMatrix = null;
     this.prevBounds = null;
@@ -102,13 +108,17 @@ export class ReplaceImageCommand implements Command {
     }
     const matrix = this.prevMatrix;
     const box = this.prevBounds;
+    if (!this.nextMatrix) {
+      this.nextMatrix = this.crop ? cropMatrix(matrix, this.crop) : { ...matrix };
+      this.nextBounds = this.crop ? matrixBounds(this.nextMatrix) : { ...box };
+    }
     // Redo: revert only detached the replacement, so re-attach that same
     // object rather than embedding the pixels a second time.
     if (this.nextObjPtr) {
       if (nested) setActive(m, this.prevObjPtr, false);
       else m.FPDFPage_RemoveObject(page.pagePtr, this.prevObjPtr);
       insertObjectAt(m, page.pagePtr, this.nextObjPtr, this.prevIndex);
-      this.adopt(page, img, this.nextObjPtr);
+      this.adopt(page, img, this.nextObjPtr, true);
       return;
     }
     let objPtr = this.jpegBytes
@@ -139,7 +149,7 @@ export class ReplaceImageCommand implements Command {
     if (!objPtr) return;
     // The embed helpers write an axis-aligned (w,0,0,h,x,y) box, which flips
     // the image on a rotated page; the captured matrix is the truth here.
-    setImageMatrix(m, objPtr, matrix);
+    setImageMatrix(m, objPtr, this.nextMatrix ?? matrix);
     // Untagged, the new image drops out of the structure tree and the Figure
     // describing the old one points at nothing. A form's MCIDs are not the
     // page's, so a nested original's tags cannot move to page level.
@@ -154,7 +164,7 @@ export class ReplaceImageCommand implements Command {
       insertObjectAt(m, page.pagePtr, objPtr, this.prevIndex);
     }
     this.nextObjPtr = objPtr;
-    this.adopt(page, img, objPtr);
+    this.adopt(page, img, objPtr, true);
   }
 
   revert(doc: EditorDocument): void {
@@ -167,13 +177,15 @@ export class ReplaceImageCommand implements Command {
     m.FPDFPage_RemoveObject(page.pagePtr, this.nextObjPtr);
     if (img.containerPtr) setActive(m, this.prevObjPtr, true);
     else insertObjectAt(m, page.pagePtr, this.prevObjPtr, this.prevIndex);
-    this.adopt(page, img, this.prevObjPtr);
+    this.adopt(page, img, this.prevObjPtr, false);
   }
 
-  private adopt(page: Page, img: ImageObject, objPtr: number): void {
+  private adopt(page: Page, img: ImageObject, objPtr: number, cropped: boolean): void {
     img.pdfiumObjPtr = objPtr;
-    if (this.prevMatrix) img.matrix = { ...this.prevMatrix };
-    if (this.prevBounds) img.bounds = { ...this.prevBounds };
+    const matrix = cropped ? this.nextMatrix : this.prevMatrix;
+    const bounds = cropped ? this.nextBounds : this.prevBounds;
+    if (matrix) img.matrix = { ...matrix };
+    if (bounds) img.bounds = { ...bounds };
     img.dirty = true;
     page.markDirty();
     page.markNeedsGenerate();
@@ -261,4 +273,17 @@ function writeMatrixStruct(
   } catch {
     /* best-effort */
   }
+}
+
+function cropMatrix(m: Affine, c: ImageCropBounds): Affine {
+  const w = c.right - c.left, h = c.bottom - c.top;
+  return { a:m.a*w, b:m.b*w, c:m.c*h, d:m.d*h,
+    e:m.e+m.a*c.left+m.c*(1-c.bottom),
+    f:m.f+m.b*c.left+m.d*(1-c.bottom) };
+}
+function matrixBounds(m: Affine): PageRect {
+  const xs=[m.e,m.e+m.a,m.e+m.c,m.e+m.a+m.c];
+  const ys=[m.f,m.f+m.b,m.f+m.d,m.f+m.b+m.d];
+  const x=Math.min(...xs),y=Math.min(...ys);
+  return {x,y,width:Math.max(...xs)-x,height:Math.max(...ys)-y};
 }
