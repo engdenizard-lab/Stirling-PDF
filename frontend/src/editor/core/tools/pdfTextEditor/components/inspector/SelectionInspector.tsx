@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ImageCropDialog } from "@editor/tools/pdfTextEditor/components/ImageCropDialog";
 import { Group, Stack, Text, Tooltip } from "@mantine/core";
 import { useTranslation } from "react-i18next";
 import { Button } from "@editor/ui/Button";
@@ -313,6 +314,10 @@ function ImageSection({ controller }: { controller: InspectorController }) {
   const {
     onTransformImage,
     onReplaceImage,
+    onCropImage,
+    cropPixels,
+    onApplyImageCrop,
+    onCancelImageCrop,
     onEditImageExternally,
     externalEditSupported,
   } = controller;
@@ -372,6 +377,12 @@ function ImageSection({ controller }: { controller: InspectorController }) {
             </Tooltip>
           ))}
         </Group>
+        <Button size="sm" variant="secondary" accent="neutral" fullWidth justify="start"
+          leftSection={<Icon name="crop" size={20} />}
+          onClick={onCropImage} data-testid="pdf-editor-imgop-crop">
+          {t("pdfTextEditor.toolbar.cropImage", "Recortar imagem")}
+        </Button>
+        {cropPixels && <ImageCropDialog pixels={cropPixels} onApply={onApplyImageCrop} onClose={onCancelImageCrop} />}
         <Button
           size="sm"
           variant="secondary"
