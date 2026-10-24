@@ -1,5 +1,10 @@
 name: Experimental Windows MSI (image crop)
 on:
+  push:
+    branches:
+      - feature/image-crop
+    paths:
+      - '.github/workflows/image-crop-windows-msi.yml'
   workflow_dispatch:
 permissions:
   contents: read
