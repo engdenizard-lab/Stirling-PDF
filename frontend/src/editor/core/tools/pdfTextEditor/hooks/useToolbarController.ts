@@ -3,6 +3,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   useSyncExternalStore,
 } from "react";
 import { useSelectionActions } from "@editor/tools/pdfTextEditor/hooks/useSelectionActions";
@@ -40,6 +41,7 @@ import {
   pickImageFile,
 } from "@editor/tools/pdfTextEditor/util/imagePicking";
 import { readImageObjectPixels } from "@editor/tools/pdfTextEditor/util/imagePixels";
+import type { ImagePixels } from "@editor/tools/pdfTextEditor/util/imagePixels";
 
 type AlignMode = "left" | "center-h" | "right" | "top" | "middle-v" | "bottom";
 
@@ -444,6 +446,20 @@ export function useToolbarController(
     return !!run && (run.paragraphSlotCount ?? 0) >= 2;
   }, [state.pages, selection]);
 
+  const [cropPixels, setCropPixels] = useState<ImagePixels | null>(null);
+  const onCropImage = useCallback(() => {
+    const doc = store.document;
+    if (!doc || selection.imageIds.length !== 1) return;
+    const target = doc.loadedPages().flatMap(p => p.images).find(im => im.id === selection.imageIds[0]);
+    if (!target?.pdfiumObjPtr || target.locked) return;
+    const pixels = readImageObjectPixels(doc, target.pageIndex, target.pdfiumObjPtr);
+    if (pixels) setCropPixels(pixels);
+  }, [store, selection.imageIds]);
+  const onApplyImageCrop = useCallback((pixels: ImagePixels) => {
+    sel.replaceSelectedImage(pixels);
+    setCropPixels(null);
+  }, [sel]);
+
   const onReplaceImage = useCallback(() => {
     void (async () => {
       const file = await pickImageFile();
@@ -515,6 +531,10 @@ export function useToolbarController(
     onDistribute,
     onTransformImage,
     onReplaceImage,
+    onCropImage,
+    cropPixels,
+    onApplyImageCrop,
+    onCancelImageCrop: () => setCropPixels(null),
     onEditImageExternally,
     externalEditSupported: isExternalImageEditSupported(),
     selectionAllLocked,
