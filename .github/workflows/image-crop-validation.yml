@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Run image replacement and crop tests
-        run: npx vitest run --project core src/editor/core/tools/pdfTextEditor/__tests__/ReplaceImageCommand.test.ts
+        run: npx vitest run --project core src/editor/core/tools/pdfTextEditor/__tests__/ReplaceImageCommand.test.ts src/editor/core/tools/pdfTextEditor/__tests__/cropImagePixels.test.ts
       - name: Check TypeScript (diagnostic)
         continue-on-error: true
         run: npx tsc --noEmit -p tsconfig.core.vite.json
