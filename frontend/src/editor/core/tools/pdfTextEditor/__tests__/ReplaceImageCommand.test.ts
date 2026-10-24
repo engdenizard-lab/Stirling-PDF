@@ -313,3 +313,37 @@ describe("ReplaceImageCommand", () => {
     expect(page.needsGenerateContent).toBe(false);
   });
 });
+
+
+describe("ReplaceImageCommand cropped placement", () => {
+  it("updates the matrix and bounds for a cropped rotated image", () => {
+    const page = pageWithImage();
+    const fake = fakePdfium([OLD_PTR]);
+    const cmd = new ReplaceImageCommand({
+      pageIndex: 0, imageId: "img1", image: REPLACEMENT,
+      crop: { left: 0.25, top: 0.25, right: 0.75, bottom: 0.75 },
+    });
+    cmd.apply(fakeDoc(fake, page));
+    const img = page.images[0];
+    expect(img.matrix).toEqual({ a: 0, b: 60, c: -40, d: 0, e: 280, f: 70 });
+    expect(img.bounds).toEqual({ x: 240, y: 70, width: 40, height: 60 });
+    expect(fake.matrixCalls.at(-1)).toEqual([img.pdfiumObjPtr, 0, 60, -40, 0, 280, 70]);
+  });
+
+  it("restores crop geometry on undo and redo", () => {
+    const page = pageWithImage();
+    const fake = fakePdfium([OLD_PTR]);
+    const doc = fakeDoc(fake, page);
+    const cmd = new ReplaceImageCommand({
+      pageIndex: 0, imageId: "img1", image: REPLACEMENT,
+      crop: { left: 0.25, top: 0.25, right: 0.75, bottom: 0.75 },
+    });
+    cmd.apply(doc);
+    const cropped = { ...page.images[0].matrix };
+    cmd.revert(doc);
+    expect(page.images[0].matrix).toEqual(ROTATED);
+    expect(page.images[0].bounds).toEqual(BOX);
+    cmd.apply(doc);
+    expect(page.images[0].matrix).toEqual(cropped);
+  });
+});
