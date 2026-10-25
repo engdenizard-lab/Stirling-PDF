@@ -350,6 +350,27 @@ export function useToolbarController(
     [store],
   );
 
+  const onRotateImageByAngle = useCallback((degrees: number) => {
+    if (!Number.isFinite(degrees) || degrees === 0) return;
+    const doc = store.document;
+    if (!doc) return;
+    const selected = new Set(store.selection.value.imageIds);
+    const commands: TransformImageObjectCommand[] = [];
+    for (const page of doc.loadedPages()) {
+      for (const img of page.images) {
+        if (!selected.has(img.id) || img.locked) continue;
+        commands.push(new TransformImageObjectCommand({
+          pageIndex: page.index,
+          imageId: img.id,
+          mode: "rotate-angle",
+          angleDegrees: degrees,
+        }));
+      }
+    }
+    if (commands.length === 1) store.dispatch(commands[0]);
+    else if (commands.length > 1) store.dispatch(new CompositeCommand(commands));
+  }, [store]);
+
   const onChangeCase = useCallback(
     (mode: "upper" | "lower" | "title" | "sentence") => {
       const doc = store.document;
@@ -541,6 +562,7 @@ export function useToolbarController(
     onAlign,
     onDistribute,
     onTransformImage,
+    onRotateImageByAngle,
     onReplaceImage,
     onCropImage,
     cropPixels: cropTarget?.pixels ?? null,
