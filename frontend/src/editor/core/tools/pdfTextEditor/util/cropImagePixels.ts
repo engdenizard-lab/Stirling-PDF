@@ -2,7 +2,9 @@ import type { ImagePixels } from "@editor/tools/pdfTextEditor/util/imagePixels";
 import type { ImageCropBounds } from "@editor/tools/pdfTextEditor/commands/ReplaceImageCommand";
 
 /** Crop RGBA pixels in top-left image coordinates, retaining exact pixel values. */
-export function cropImagePixels(pixels: ImagePixels, crop: ImageCropBounds): ImagePixels {
+export interface CroppedImageResult { image: ImagePixels; appliedCrop: ImageCropBounds; }
+
+export function cropImagePixels(pixels: ImagePixels, crop: ImageCropBounds): CroppedImageResult {
   const { width, height, rgba } = pixels;
   if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0 ||
       rgba.length !== width * height * 4) throw new Error("Invalid source image");
@@ -19,5 +21,8 @@ export function cropImagePixels(pixels: ImagePixels, crop: ImageCropBounds): Ima
     const start = ((y0 + y) * width + x0) * 4;
     output.set(rgba.subarray(start, start + w * 4), y * w * 4);
   }
-  return { rgba: output, width: w, height: h };
+  return {
+    image: { rgba: output, width: w, height: h },
+    appliedCrop: { left: x0 / width, top: y0 / height, right: x1 / width, bottom: y1 / height },
+  };
 }
