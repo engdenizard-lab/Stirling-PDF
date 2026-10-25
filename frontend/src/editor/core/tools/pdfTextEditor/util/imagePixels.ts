@@ -44,10 +44,12 @@ export function readImageObjectPixels(
 
   let bitmap = 0;
   try {
-    bitmap =
-      mod.FPDFImageObj_GetRenderedBitmap?.(doc.docPtr, page.pagePtr, objPtr) ??
-      0;
-    if (!bitmap) bitmap = mod.FPDFImageObj_GetBitmap?.(objPtr) ?? 0;
+    // Prefer the native image bitmap to avoid downsampling during PDF rendering.
+    bitmap = mod.FPDFImageObj_GetBitmap?.(objPtr) ?? 0;
+    if (!bitmap)
+      bitmap = mod.FPDFImageObj_GetRenderedBitmap?.(
+        doc.docPtr, page.pagePtr, objPtr,
+      ) ?? 0;
     if (!bitmap) return null;
 
     const width = mod.FPDFBitmap_GetWidth?.(bitmap) ?? 0;
