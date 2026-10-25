@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ImageCropDialog } from "@editor/tools/pdfTextEditor/components/ImageCropDialog";
 import { Group, NumberInput, Stack, Text, Tooltip } from "@mantine/core";
 import { useTranslation } from "react-i18next";
@@ -71,7 +71,7 @@ export function SelectionInspector({
           onUngroup={onUngroup}
         />
       )}
-      {hasImageSelection && <ImageSection controller={controller} />}
+      {hasImageSelection && <ImageSection key={selection.imageIds.join(":")} controller={controller} />}
     </Stack>
   );
 }
@@ -322,12 +322,18 @@ function ImageSection({ controller }: { controller: InspectorController }) {
     onEditImageExternally,
     externalEditSupported,
   } = controller;
+  // Value is relative to the image's orientation when it was selected.
+  // Dispatch every valid change immediately: clicking elsewhere must not be
+  // necessary to make the PDF update. A ref keeps rapid +/-1 steps accurate.
   const [angle, setAngle] = useState<number | string>(0);
-  const commitAngle = () => {
-    const degrees = typeof angle === "number" ? angle : Number(angle.replace(",", "."));
-    if (!Number.isFinite(degrees) || degrees === 0) return;
-    onRotateImageByAngle(degrees);
-    setAngle(0);
+  const appliedAngle = useRef(0);
+  const updateAngle = (next: number | string) => {
+    setAngle(next);
+    if (typeof next !== "number" || !Number.isFinite(next)) return;
+    const delta = next - appliedAngle.current;
+    if (delta === 0) return;
+    appliedAngle.current = next;
+    onRotateImageByAngle(delta);
   };
   const transforms = useMemo(
     () =>
@@ -372,11 +378,9 @@ function ImageSection({ controller }: { controller: InspectorController }) {
       <Stack gap="xs">
         <NumberInput
           label={t("pdfTextEditor.inspector.imageRotationAngle", "Rotação (°)")}
-          description={t("pdfTextEditor.inspector.imageRotationHint", "Digite o ângulo e pressione Enter; ajuste de 1° pelas setas.")}
+          description={t("pdfTextEditor.inspector.imageRotationHint", "A rotação é aplicada automaticamente; use as setas para ajustar 1° por vez.")}
           value={angle}
-          onChange={setAngle}
-          onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commitAngle(); } }}
-          onBlur={commitAngle}
+          onChange={updateAngle}
           step={1}
           decimalScale={2}
           allowNegative
