@@ -5,6 +5,7 @@ on:
       - feature/image-crop
     paths:
       - '.github/workflows/image-crop-windows-msi.yml'
+      - 'frontend/src/editor/core/tools/pdfTextEditor/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -31,6 +32,8 @@ jobs:
         uses: go-task/setup-task@v1
       - name: Install frontend dependencies
         run: npm ci --no-audit --no-fund
+      - name: Run image crop regression tests
+        run: npx vitest run --project core src/editor/core/tools/pdfTextEditor/__tests__/ReplaceImageCommand.test.ts src/editor/core/tools/pdfTextEditor/__tests__/cropImagePixels.test.ts
       - name: Prepare backend JAR, JLink runtime and desktop resources
         working-directory: .
         shell: pwsh
