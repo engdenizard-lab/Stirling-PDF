@@ -9,7 +9,8 @@ export type ImageTransformMode =
   | "rotate-cw"
   | "rotate-ccw"
   | "flip-h"
-  | "flip-v";
+  | "flip-v"
+  | "rotate-angle";
 
 interface ImageMatrixSetterModule {
   FPDFImageObj_SetMatrix?: (
@@ -28,16 +29,19 @@ export class TransformImageObjectCommand implements Command {
   private readonly pageIndex: number;
   private readonly imageId: string;
   private readonly mode: ImageTransformMode;
+  private readonly angleDegrees: number;
   private prevMatrix: Affine | null;
 
   constructor(opts: {
     pageIndex: number;
     imageId: string;
     mode: ImageTransformMode;
+    angleDegrees?: number;
   }) {
     this.pageIndex = opts.pageIndex;
     this.imageId = opts.imageId;
     this.mode = opts.mode;
+    this.angleDegrees = opts.angleDegrees ?? 0;
     this.prevMatrix = null;
   }
 
@@ -46,7 +50,7 @@ export class TransformImageObjectCommand implements Command {
     const img = page.findImage(this.imageId);
     if (!img || !img.pdfiumObjPtr) return;
     if (this.prevMatrix === null) this.prevMatrix = { ...img.matrix };
-    const next = composeAboutCentre(img.matrix, this.mode);
+    const next = composeAboutCentre(img.matrix, this.mode, this.angleDegrees);
     setMatrix(doc, img.pdfiumObjPtr, next);
     retargetClipPath(doc.module, img.pdfiumObjPtr, img.matrix, next);
     img.matrix = next;
@@ -73,13 +77,21 @@ export class TransformImageObjectCommand implements Command {
 
 // Compose `T(cx, cy) * Op * T(-cx, -cy) * M` where M is the input matrix, Op is
 // the rotation/flip, and (cx, cy) is M's image-centre in page space.
-function composeAboutCentre(m: Affine, mode: ImageTransformMode): Affine {
+function composeAboutCentre(m: Affine, mode: ImageTransformMode, angleDegrees = 0): Affine {
   const cx = m.e + (m.a + m.c) / 2;
   const cy = m.f + (m.b + m.d) / 2;
   // Op transforms image-space (post-rotation/flip is applied to page-space
   // output).
   let oa: number, ob: number, oc: number, od: number;
   switch (mode) {
+    case "rotate-angle": {
+      const rad = angleDegrees * Math.PI / 180;
+      oa = Math.cos(rad);
+      ob = Math.sin(rad);
+      oc = -Math.sin(rad);
+      od = Math.cos(rad);
+      break;
+    }
     case "rotate-ccw":
       oa = 0;
       ob = 1;
