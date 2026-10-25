@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { ImageCropDialog } from "@editor/tools/pdfTextEditor/components/ImageCropDialog";
-import { Group, NumberInput, Stack, Text, Tooltip } from "@mantine/core";
+import { Group, NumberInput, Stack, Text, TextInput, Tooltip } from "@mantine/core";
 import { useTranslation } from "react-i18next";
 import { Button } from "@editor/ui/Button";
 import { Icon } from "@editor/ui/Icon";
@@ -63,6 +63,7 @@ export function SelectionInspector({
       {runCount + imageCount > 0 && (
         <GeometrySection geometry={geometry} isImage={!hasRunSelection} />
       )}
+      {hasRunSelection && <AdvancedTextSection key={selection.runIds.join(":")} controller={controller} />}
       {hasRunSelection && (
         <ParagraphSection
           canGroup={canGroup}
@@ -134,6 +135,119 @@ function SelectionHeader({
           {fontNote}
         </Text>
       )}
+    </Section>
+  );
+}
+
+/** Numeric and typographic controls reuse the existing undoable text commands. */
+function AdvancedTextSection({ controller }: { controller: InspectorController }) {
+  const { t } = useTranslation();
+  const state = controller.state;
+  const [family, setFamily] = useState(state.fontFamily ?? "");
+  const [size, setSize] = useState<number | string>(state.fontSize ?? "");
+  const fill = state.fill;
+  const currentColour = fill
+    ? "#" + [fill.r, fill.g, fill.b].map((n) => n.toString(16).padStart(2, "0")).join("")
+    : "";
+  const [colour, setColour] = useState(currentColour);
+  const [outlineWidth, setOutlineWidth] = useState<number | string>(state.strokeWidth ?? 0);
+  const [outlineColour, setOutlineColour] = useState("#000000");
+  const validHex = (value: string) => /^#[0-9a-fA-F]{6}$/.test(value);
+  return (
+    <Section testId="pdf-editor-advanced-text">
+      <SectionLabel>{t("pdfTextEditor.inspector.advancedText", "Edição avançada de texto")}</SectionLabel>
+      <Stack gap="xs">
+        <TextInput
+          label={t("pdfTextEditor.inspector.fontFamily", "Fonte")}
+          description={t("pdfTextEditor.inspector.fontFamilyHelp", "Nome da fonte disponível ou incorporada")}
+          value={family}
+          onChange={(event) => setFamily(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && family.trim()) {
+              controller.onChangeFontFamily(family.trim());
+              event.currentTarget.blur();
+            }
+          }}
+          data-testid="pdf-editor-advanced-font-family"
+        />
+        <Group grow gap="xs" align="end">
+          <NumberInput
+            label={t("pdfTextEditor.inspector.fontSize", "Tamanho (pt)")}
+            value={size}
+            min={1}
+            max={500}
+            step={1}
+            onChange={setSize}
+            onBlur={() => {
+              if (typeof size === "number" && Number.isFinite(size) && size >= 1 && size <= 500)
+                controller.onChangeFontSize(size);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+            }}
+            data-testid="pdf-editor-advanced-font-size"
+          />
+          <TextInput
+            label={t("pdfTextEditor.inspector.textColour", "Cor hexadecimal")}
+            placeholder="#000000"
+            value={colour}
+            onChange={(event) => setColour(event.currentTarget.value)}
+            onBlur={() => { if (validHex(colour)) controller.onChangeFill(colour); }}
+            onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
+            data-testid="pdf-editor-advanced-text-colour"
+          />
+        </Group>
+        <Group grow gap="xs" align="end">
+          <TextInput
+            label={t("pdfTextEditor.inspector.outlineColour", "Cor do contorno")}
+            value={outlineColour}
+            onChange={(event) => setOutlineColour(event.currentTarget.value)}
+            data-testid="pdf-editor-advanced-outline-colour"
+          />
+          <NumberInput
+            label={t("pdfTextEditor.inspector.outlineWidth", "Contorno (pt)")}
+            value={outlineWidth}
+            onChange={setOutlineWidth}
+            min={0}
+            max={20}
+            step={0.5}
+            decimalScale={2}
+            data-testid="pdf-editor-advanced-outline-width"
+          />
+        </Group>
+        <Button size="sm" variant="secondary" accent="neutral" fullWidth
+          disabled={!validHex(outlineColour) || typeof outlineWidth !== "number"}
+          onClick={() => {
+            if (typeof outlineWidth === "number" && Number.isFinite(outlineWidth))
+              controller.onChangeOutline(outlineWidth === 0 ? null : outlineColour, outlineWidth);
+          }}
+          data-testid="pdf-editor-advanced-outline-apply">
+          {t("pdfTextEditor.inspector.applyOutline", "Aplicar contorno")}
+        </Button>
+        <Text size="xs" c="dimmed">{t("pdfTextEditor.inspector.caseChange", "Converter texto")}</Text>
+        <Group gap="xs" grow>
+          <Button size="sm" variant="secondary" accent="neutral" onClick={() => controller.onChangeCase("upper")}>
+            {t("pdfTextEditor.inspector.uppercase", "MAIÚSCULAS")}
+          </Button>
+          <Button size="sm" variant="secondary" accent="neutral" onClick={() => controller.onChangeCase("lower")}>
+            {t("pdfTextEditor.inspector.lowercase", "minúsculas")}
+          </Button>
+        </Group>
+        <Group gap="xs" grow>
+          <Button size="sm" variant="secondary" accent="neutral" onClick={() => controller.onAlign("left")}>
+            {t("pdfTextEditor.inspector.alignLeft", "Esquerda")}
+          </Button>
+          <Button size="sm" variant="secondary" accent="neutral" onClick={() => controller.onAlign("center-h")}>
+            {t("pdfTextEditor.inspector.alignCenter", "Centro")}
+          </Button>
+          <Button size="sm" variant="secondary" accent="neutral" onClick={() => controller.onAlign("right")}>
+            {t("pdfTextEditor.inspector.alignRight", "Direita")}
+          </Button>
+        </Group>
+        <Text size="xs" c="dimmed">
+          {t("pdfTextEditor.inspector.alignHelp", "O alinhamento interno requer um parágrafo com múltiplas linhas; para vários objetos, alinha as caixas selecionadas.")}
+        </Text>
+      </Stack>
     </Section>
   );
 }
