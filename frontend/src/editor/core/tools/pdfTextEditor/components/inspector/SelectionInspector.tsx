@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ImageCropDialog } from "@editor/tools/pdfTextEditor/components/ImageCropDialog";
-import { Group, Stack, Text, Tooltip } from "@mantine/core";
+import { Group, NumberInput, Stack, Text, Tooltip } from "@mantine/core";
 import { useTranslation } from "react-i18next";
 import { Button } from "@editor/ui/Button";
 import { Icon } from "@editor/ui/Icon";
@@ -313,6 +313,7 @@ function ImageSection({ controller }: { controller: InspectorController }) {
   const { t } = useTranslation();
   const {
     onTransformImage,
+    onRotateImageByAngle,
     onReplaceImage,
     onCropImage,
     cropPixels,
@@ -321,6 +322,13 @@ function ImageSection({ controller }: { controller: InspectorController }) {
     onEditImageExternally,
     externalEditSupported,
   } = controller;
+  const [angle, setAngle] = useState<number | string>(0);
+  const commitAngle = () => {
+    const degrees = typeof angle === "number" ? angle : Number(angle.replace(",", "."));
+    if (!Number.isFinite(degrees) || degrees === 0) return;
+    onRotateImageByAngle(degrees);
+    setAngle(0);
+  };
   const transforms = useMemo(
     () =>
       [
@@ -362,6 +370,19 @@ function ImageSection({ controller }: { controller: InspectorController }) {
     <Section testId="pdf-editor-imgop-menu">
       <SectionLabel>{t("pdfTextEditor.inspector.image", "Image")}</SectionLabel>
       <Stack gap="xs">
+        <NumberInput
+          label={t("pdfTextEditor.inspector.imageRotationAngle", "Rotação (°)")}
+          description={t("pdfTextEditor.inspector.imageRotationHint", "Digite o ângulo e pressione Enter; ajuste de 1° pelas setas.")}
+          value={angle}
+          onChange={setAngle}
+          onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); commitAngle(); } }}
+          onBlur={commitAngle}
+          step={1}
+          decimalScale={2}
+          allowNegative
+          suffix="°"
+          data-testid="pdf-editor-imgop-rotate-angle"
+        />
         <Group gap={4} wrap="nowrap">
           {transforms.map((tr) => (
             <Tooltip key={tr.mode} label={tr.label}>
