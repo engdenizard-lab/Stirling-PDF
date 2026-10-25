@@ -56,7 +56,8 @@ export function ImageCropDialog({pixels,onApply,onClose}:{pixels:ImagePixels;onA
   };
   const apply=()=>{
     const crop = {left:bounds.l,top:bounds.t,right:bounds.r,bottom:bounds.b};
-    onApply(cropImagePixels(pixels, crop), crop);
+    const result = cropImagePixels(pixels, crop);
+    onApply(result.image, result.appliedCrop);
   };
   return <Modal opened onClose={onClose} title="Recortar imagem" centered size="lg">
     <Stack gap="sm">
