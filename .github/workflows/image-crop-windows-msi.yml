@@ -33,7 +33,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --no-audit --no-fund
       - name: Run image crop regression tests
-        run: npx vitest run --project core src/editor/core/tools/pdfTextEditor/__tests__/ReplaceImageCommand.test.ts src/editor/core/tools/pdfTextEditor/__tests__/cropImagePixels.test.ts src/editor/core/tools/pdfTextEditor/__tests__/RotateImageByAngle.test.ts
+        run: npx vitest run --project core src/editor/core/tools/pdfTextEditor/__tests__/ReplaceImageCommand.test.ts src/editor/core/tools/pdfTextEditor/__tests__/cropImagePixels.test.ts src/editor/core/tools/pdfTextEditor/__tests__/RotateImageByAngle.test.ts src/editor/core/tools/pdfTextEditor/__tests__/ocrPageScope.test.ts
       - name: Prepare backend JAR, JLink runtime and desktop resources
         working-directory: .
         shell: pwsh
