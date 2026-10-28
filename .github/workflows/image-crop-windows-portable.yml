@@ -1,0 +1,90 @@
+name: Experimental Windows Portable ZIP
+on:
+  push:
+    branches:
+      - feature/image-crop
+    paths:
+      - '.github/workflows/image-crop-windows-portable.yml'
+      - 'frontend/src/editor/core/tools/pdfTextEditor/**'
+      - 'frontend/src-tauri/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-portable:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: go-task/setup-task@v1
+      - name: Install frontend dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run editor regression tests
+        run: npx vitest run --project core src/editor/core/tools/pdfTextEditor/__tests__/ReplaceImageCommand.test.ts src/editor/core/tools/pdfTextEditor/__tests__/cropImagePixels.test.ts src/editor/core/tools/pdfTextEditor/__tests__/RotateImageByAngle.test.ts
+      - name: Prepare embedded Java runtime and backend
+        working-directory: .
+        shell: pwsh
+        env:
+          JPDFIUM_PLATFORMS: windows-x64
+        run: task desktop:prepare
+      - name: Configure independent experimental application
+        shell: pwsh
+        run: |
+          $config = @{
+            productName = 'Stirling PDF Crop Experimental'
+            identifier = 'lab.engdenizard.stirlingcrop'
+            bundle = @{ createUpdaterArtifacts = $false }
+            plugins = @{ updater = @{ active = $false } }
+          }
+          $config | ConvertTo-Json -Depth 12 | Set-Content -Path 'src-tauri/crop.experimental.conf.json' -Encoding utf8
+      - name: Compile executable without installer
+        run: npx tauri build --no-bundle --config src-tauri/crop.experimental.conf.json
+      - name: Assemble and verify portable folder
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dest = 'portable/Stirling-PDF-Crop'
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          $exe = 'src-tauri/target/release/Stirling-PDF.exe'
+          if (!(Test-Path $exe)) { throw "No executable found at $exe" }
+          Copy-Item $exe "$dest/Stirling-PDF-Crop.exe"
+          Copy-Item 'src-tauri/libs' "$dest/libs" -Recurse
+          Copy-Item 'src-tauri/runtime/jre' "$dest/runtime/jre" -Recurse
+          if (!(Test-Path "$dest/runtime/jre/bin/java.exe")) { throw 'Bundled Java runtime missing' }
+          if (@(Get-ChildItem "$dest/libs" -Filter '*.jar').Count -eq 0) { throw 'Backend JAR missing' }
+          @'
+          Stirling PDF Crop - Experimental Portable
+          Extract the ENTIRE ZIP before running Stirling-PDF-Crop.exe.
+          Keep libs/ and runtime/jre/ in the same folder as the EXE.
+          No MSI installation is required. Windows 10/11 x64 and WebView2 are required.
+          This build is unsigned. Verify provenance and scan before executing.
+          IMPORTANT: application settings and backend workspace may still be stored
+          in the normal Windows user profile; this is install-free, NOT fully
+          self-contained user-data portability.
+          Never run unknown/untrusted executable files or disable security software.
+          '@ | Set-Content "$dest/README-PORTABLE.txt" -Encoding utf8
+          Get-ChildItem $dest -Recurse -File | Get-FileHash -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash)  $($_.Path.Substring((Resolve-Path $dest).Path.Length + 1))" } |
+            Set-Content "$dest/SHA256SUMS.txt" -Encoding ascii
+          Compress-Archive -Path "$dest" -DestinationPath 'portable/Stirling-PDF-Crop-Windows-x64-Portable.zip' -CompressionLevel Optimal
+          if (!(Test-Path 'portable/Stirling-PDF-Crop-Windows-x64-Portable.zip')) { throw 'ZIP missing' }
+      - name: Upload portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Stirling-PDF-Crop-Windows-x64-Portable
+          path: frontend/portable/Stirling-PDF-Crop-Windows-x64-Portable.zip
+          if-no-files-found: error
+          retention-days: 14
