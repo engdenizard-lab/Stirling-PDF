@@ -463,6 +463,15 @@ fn monitor_backend_output(mut rx: tauri::async_runtime::Receiver<tauri_plugin_sh
                     // Strip exactly one trailing newline to avoid double newlines
                     let output_str = output_str.strip_suffix('\n').unwrap_or(&output_str);
                     add_log(format!("📥 Backend Error: {}", output_str));
+                    // Spring/launcher may emit the dynamically assigned port on stderr.
+                    // Without recording it, the frontend reports "Backend offline"
+                    // even though the Java server is listening and returns HTTP 200.
+                    if let Some(port) = extract_port_from_running_log(&output_str) {
+                        let mut port_guard = BACKEND_PORT.lock().unwrap();
+                        *port_guard = Some(port);
+                        add_log(format!("🎉 Backend port discovered on stderr: {}", port));
+                    }
+
 
                     // Look for error indicators
                     if output_str.contains("ERROR") || output_str.contains("Exception") || output_str.contains("FATAL") {
