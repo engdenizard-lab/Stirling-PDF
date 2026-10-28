@@ -392,7 +392,31 @@ fn run_stirling_pdf_jar(app: &tauri::AppHandle, java_path: &PathBuf, jar_path: &
     sweep_stale_shutdown_files(&work_dir, &shutdown_file);
     *BACKEND_SHUTDOWN_FILE.lock().unwrap() = Some(shutdown_file.clone());
 
-    let sidecar_command = app
+    // Optional bundled OCR engine for the experimental offline desktop build.
+    // Keep detection explicit: do not claim OCR is available when Tesseract is absent.
+    let resource_dir = app.path().resource_dir().ok();
+    let bundled_ocr = resource_dir
+        .as_ref()
+        .map(|dir| dir.join("ocr").join("tesseract.exe"))
+        .filter(|exe| exe.is_file());
+    let ocr_directory = bundled_ocr.as_ref().and_then(|exe| exe.parent());
+    let tessdata_dir = resource_dir
+        .as_ref()
+        .map(|dir| dir.join("ocr").join("tessdata"))
+        .filter(|dir| dir.join("eng.traineddata").is_file());
+    let mut search_path = std::env::var_os("PATH").unwrap_or_default();
+    if let Some(dir) = ocr_directory {
+        let mut dirs = vec![dir.to_path_buf()];
+        dirs.extend(std::env::split_paths(&search_path));
+        if let Ok(joined) = std::env::join_paths(dirs) {
+            search_path = joined;
+            add_log(format!("OCR executable available at {}", dir.display()));
+        }
+    } else {
+        add_log("OCR unavailable: bundled Tesseract executable not found".to_string());
+    }
+
+    let mut sidecar_command = app
         .shell()
         .command(java_path.to_str().unwrap())
         .args(java_options)
@@ -401,7 +425,14 @@ fn run_stirling_pdf_jar(app: &tauri::AppHandle, java_path: &PathBuf, jar_path: &
         .env("STIRLING_PDF_CONFIG_DIR", config_dir.to_str().unwrap())
         .env("STIRLING_PDF_LOG_DIR", log_dir.to_str().unwrap())
         .env("STIRLING_PDF_WORK_DIR", work_dir.to_str().unwrap())
-        .env("STIRLING_PDF_SHUTDOWN_FILE", shutdown_file.to_str().unwrap());
+        .env("STIRLING_PDF_SHUTDOWN_FILE", shutdown_file.to_str().unwrap())
+        .env("PATH", search_path);
+    if let Some(tessdata) = tessdata_dir {
+        sidecar_command = sidecar_command
+            .env("TESSDATA_PREFIX", tessdata.to_string_lossy().to_string())
+            .env("SYSTEM_TESSDATADIR", tessdata.to_string_lossy().to_string());
+        add_log(format!("OCR languages located at {}", tessdata.display()));
+    }
 
     add_log("⚙️ Starting backend with bundled JRE...".to_string());
 
