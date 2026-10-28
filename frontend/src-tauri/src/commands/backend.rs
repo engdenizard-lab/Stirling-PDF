@@ -435,8 +435,8 @@ fn run_stirling_pdf_jar(app: &tauri::AppHandle, java_path: &PathBuf, jar_path: &
         let normalized_tessdata = normalize_path(&tessdata);
         let tessdata_str = normalized_tessdata.to_string_lossy().to_string();
         sidecar_command = sidecar_command
-            .env("TESSDATA_PREFIX", &tessdata_str)
-            .env("SYSTEM_TESSDATADIR", &tessdata_str);
+            .env("TESSDATA_PREFIX", tessdata_str.clone())
+            .env("SYSTEM_TESSDATADIR", tessdata_str);
         add_log(format!("OCR languages located at {}", normalized_tessdata.display()));
     }
 
