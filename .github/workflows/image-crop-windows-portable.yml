@@ -94,10 +94,11 @@ jobs:
           if (@(Get-ChildItem "$dest/libs" -Filter '*.jar').Count -eq 0) { throw 'Backend JAR missing' }
           if (!(Test-Path "$dest/ocr/tesseract.exe")) { throw 'OCR engine missing' }
           foreach ($language in @('eng','por')) { if (!(Test-Path "$dest/ocr/tessdata/$language.traineddata")) { throw "Missing OCR language: $language" } }
-          # Verify language data in the final portable folder.
+          # Verify both language packs in the final portable folder.
           $env:TESSDATA_PREFIX = (Resolve-Path "$dest/ocr/tessdata").Path
           $langs = & "$dest/ocr/tesseract.exe" --list-langs 2>&1 | Out-String
-          if ($LASTEXITCODE -ne 0 -or -not ($langs -match '(?m)^por\\s*$') -or -not ($langs -match '(?m)^eng\\s*$')) {
+          $names = $langs -split "[\\r\\n]+" | ForEach-Object { $_.Trim() }
+          if ($LASTEXITCODE -ne 0 -or -not ($names -contains 'por') -or -not ($names -contains 'eng')) {
             throw "Packaged OCR language verification failed: $langs"
           }
           @'
