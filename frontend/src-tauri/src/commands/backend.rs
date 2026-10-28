@@ -428,10 +428,16 @@ fn run_stirling_pdf_jar(app: &tauri::AppHandle, java_path: &PathBuf, jar_path: &
         .env("STIRLING_PDF_SHUTDOWN_FILE", shutdown_file.to_str().unwrap())
         .env("PATH", search_path);
     if let Some(tessdata) = tessdata_dir {
+        // Tauri's resource_dir() can use a Windows extended-length path (\\\\?\\).
+        // Native Tesseract resolves TESSDATA_PREFIX as a filesystem path and
+        // rejects that prefix on some Windows builds. Reuse the normalizer
+        // already used for the JRE and JAR paths.
+        let normalized_tessdata = normalize_path(&tessdata);
+        let tessdata_str = normalized_tessdata.to_string_lossy().to_string();
         sidecar_command = sidecar_command
-            .env("TESSDATA_PREFIX", tessdata.to_string_lossy().to_string())
-            .env("SYSTEM_TESSDATADIR", tessdata.to_string_lossy().to_string());
-        add_log(format!("OCR languages located at {}", tessdata.display()));
+            .env("TESSDATA_PREFIX", &tessdata_str)
+            .env("SYSTEM_TESSDATADIR", &tessdata_str);
+        add_log(format!("OCR languages located at {}", normalized_tessdata.display()));
     }
 
     add_log("⚙️ Starting backend with bundled JRE...".to_string());
