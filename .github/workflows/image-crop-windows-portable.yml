@@ -94,10 +94,12 @@ jobs:
           if (@(Get-ChildItem "$dest/libs" -Filter '*.jar').Count -eq 0) { throw 'Backend JAR missing' }
           if (!(Test-Path "$dest/ocr/tesseract.exe")) { throw 'OCR engine missing' }
           foreach ($language in @('eng','por')) { if (!(Test-Path "$dest/ocr/tessdata/$language.traineddata")) { throw "Missing OCR language: $language" } }
-          # Verify the final ZIP layout with the same tessdata prefix the backend uses.
+          # Verify language data in the final portable folder.
           $env:TESSDATA_PREFIX = (Resolve-Path "$dest/ocr/tessdata").Path
           $langs = & "$dest/ocr/tesseract.exe" --list-langs 2>&1 | Out-String
-          if ($LASTEXITCODE -ne 0 -or $langs -notmatch '(?m)^por\\s*
+          if ($LASTEXITCODE -ne 0 -or -not ($langs -match '(?m)^por\\s*$') -or -not ($langs -match '(?m)^eng\\s*$')) {
+            throw "Packaged OCR language verification failed: $langs"
+          }
           @'
           Stirling PDF Crop - Experimental Portable
           Extract the ENTIRE ZIP before running Stirling-PDF-Crop.exe.
