@@ -97,7 +97,7 @@ jobs:
           # Verify both language packs in the final portable folder.
           $env:TESSDATA_PREFIX = (Resolve-Path "$dest/ocr/tessdata").Path
           $langs = & "$dest/ocr/tesseract.exe" --list-langs 2>&1 | Out-String
-          $names = $langs -split "[\\r\\n]+" | ForEach-Object { $_.Trim() }
+          $names = $langs.Split([char[]]@(13,10), [System.StringSplitOptions]::RemoveEmptyEntries) | ForEach-Object { $_.Trim() }
           if ($LASTEXITCODE -ne 0 -or -not ($names -contains 'por') -or -not ($names -contains 'eng')) {
             throw "Packaged OCR language verification failed: $langs"
           }
