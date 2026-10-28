@@ -94,6 +94,64 @@ jobs:
           if (@(Get-ChildItem "$dest/libs" -Filter '*.jar').Count -eq 0) { throw 'Backend JAR missing' }
           if (!(Test-Path "$dest/ocr/tesseract.exe")) { throw 'OCR engine missing' }
           foreach ($language in @('eng','por')) { if (!(Test-Path "$dest/ocr/tessdata/$language.traineddata")) { throw "Missing OCR language: $language" } }
+          # Verify the final ZIP layout with the same tessdata prefix the backend uses.
+          $env:TESSDATA_PREFIX = (Resolve-Path "$dest/ocr/tessdata").Path
+          $langs = & "$dest/ocr/tesseract.exe" --list-langs 2>&1 | Out-String
+          if ($LASTEXITCODE -ne 0 -or $langs -notmatch '(?m)^por\\s*
+          @'
+          Stirling PDF Crop - Experimental Portable
+          Extract the ENTIRE ZIP before running Stirling-PDF-Crop.exe.
+          Keep libs/, runtime/jre/, and ocr/ in the same folder as the EXE.
+          Experimental: OCR engine bundled for local processing (Portuguese/English).
+          OCR UI availability and searchable PDF output still require functional validation.
+          No MSI installation is required. Windows 10/11 x64 and WebView2 are required.
+          This build is unsigned. Verify provenance and scan before executing.
+          IMPORTANT: application settings and backend workspace may still be stored
+          in the normal Windows user profile; this is install-free, NOT fully
+          self-contained user-data portability.
+          Never run unknown/untrusted executable files or disable security software.
+          '@ | Set-Content "$dest/README-PORTABLE.txt" -Encoding utf8
+          Get-ChildItem $dest -Recurse -File | Get-FileHash -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash)  $($_.Path.Substring((Resolve-Path $dest).Path.Length + 1))" } |
+            Set-Content "$dest/SHA256SUMS.txt" -Encoding ascii
+          Compress-Archive -Path "$dest" -DestinationPath 'portable/Stirling-PDF-Crop-Windows-x64-Portable.zip' -CompressionLevel Optimal
+          if (!(Test-Path 'portable/Stirling-PDF-Crop-Windows-x64-Portable.zip')) { throw 'ZIP missing' }
+      - name: Upload portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Stirling-PDF-Crop-Windows-x64-Portable
+          path: frontend/portable/Stirling-PDF-Crop-Windows-x64-Portable.zip
+          if-no-files-found: error
+          retention-days: 14
+ -or $langs -notmatch '(?m)^eng\\s*
+          @'
+          Stirling PDF Crop - Experimental Portable
+          Extract the ENTIRE ZIP before running Stirling-PDF-Crop.exe.
+          Keep libs/, runtime/jre/, and ocr/ in the same folder as the EXE.
+          Experimental: OCR engine bundled for local processing (Portuguese/English).
+          OCR UI availability and searchable PDF output still require functional validation.
+          No MSI installation is required. Windows 10/11 x64 and WebView2 are required.
+          This build is unsigned. Verify provenance and scan before executing.
+          IMPORTANT: application settings and backend workspace may still be stored
+          in the normal Windows user profile; this is install-free, NOT fully
+          self-contained user-data portability.
+          Never run unknown/untrusted executable files or disable security software.
+          '@ | Set-Content "$dest/README-PORTABLE.txt" -Encoding utf8
+          Get-ChildItem $dest -Recurse -File | Get-FileHash -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash)  $($_.Path.Substring((Resolve-Path $dest).Path.Length + 1))" } |
+            Set-Content "$dest/SHA256SUMS.txt" -Encoding ascii
+          Compress-Archive -Path "$dest" -DestinationPath 'portable/Stirling-PDF-Crop-Windows-x64-Portable.zip' -CompressionLevel Optimal
+          if (!(Test-Path 'portable/Stirling-PDF-Crop-Windows-x64-Portable.zip')) { throw 'ZIP missing' }
+      - name: Upload portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Stirling-PDF-Crop-Windows-x64-Portable
+          path: frontend/portable/Stirling-PDF-Crop-Windows-x64-Portable.zip
+          if-no-files-found: error
+          retention-days: 14
+) {
+            throw "Packaged OCR language verification failed: $langs"
+          }
           @'
           Stirling PDF Crop - Experimental Portable
           Extract the ENTIRE ZIP before running Stirling-PDF-Crop.exe.
