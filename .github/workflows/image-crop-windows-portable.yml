@@ -52,6 +52,31 @@ jobs:
           $config | ConvertTo-Json -Depth 12 | Set-Content -Path 'src-tauri/crop.experimental.conf.json' -Encoding utf8
       - name: Compile executable without installer
         run: npx tauri build --no-bundle --config src-tauri/crop.experimental.conf.json
+      - name: Provision optional offline OCR engine
+        shell: pwsh
+        working-directory: frontend
+        run: |
+          $ErrorActionPreference = 'Stop'
+          choco install tesseract -y --no-progress
+          $candidates = @(
+            'C:\Program Files\Tesseract-OCR',
+            'C:\Program Files (x86)\Tesseract-OCR'
+          )
+          $source = $candidates | Where-Object { Test-Path (Join-Path $_ 'tesseract.exe') } | Select-Object -First 1
+          if (-not $source) { throw 'Tesseract executable not found after provisioning' }
+          New-Item -ItemType Directory -Force -Path 'src-tauri/ocr' | Out-Null
+          Copy-Item (Join-Path $source '*') 'src-tauri/ocr/' -Recurse -Force
+          New-Item -ItemType Directory -Force -Path 'src-tauri/ocr/tessdata' | Out-Null
+          foreach ($language in @('eng','por')) {
+            $target = "src-tauri/ocr/tessdata/$language.traineddata"
+            if (!(Test-Path $target)) {
+              Invoke-WebRequest "https://github.com/tesseract-ocr/tessdata_fast/raw/refs/heads/main/$language.traineddata" -OutFile $target
+            }
+            if ((Get-Item $target).Length -lt 100000) { throw "OCR language file invalid: $target" }
+          }
+          & 'src-tauri/ocr/tesseract.exe' --version
+          $env:TESSDATA_PREFIX = (Resolve-Path 'src-tauri/ocr/tessdata').Path
+          & 'src-tauri/ocr/tesseract.exe' --list-langs
       - name: Assemble and verify portable folder
         shell: pwsh
         run: |
@@ -64,12 +89,17 @@ jobs:
           Copy-Item 'src-tauri/libs' "$dest/libs" -Recurse
           New-Item -ItemType Directory -Force -Path "$dest/runtime" | Out-Null
           Copy-Item 'src-tauri/runtime/jre' "$dest/runtime/jre" -Recurse
+          Copy-Item 'src-tauri/ocr' "$dest/ocr" -Recurse
           if (!(Test-Path "$dest/runtime/jre/bin/java.exe")) { throw 'Bundled Java runtime missing' }
           if (@(Get-ChildItem "$dest/libs" -Filter '*.jar').Count -eq 0) { throw 'Backend JAR missing' }
+          if (!(Test-Path "$dest/ocr/tesseract.exe")) { throw 'OCR engine missing' }
+          foreach ($language in @('eng','por')) { if (!(Test-Path "$dest/ocr/tessdata/$language.traineddata")) { throw "Missing OCR language: $language" } }
           @'
           Stirling PDF Crop - Experimental Portable
           Extract the ENTIRE ZIP before running Stirling-PDF-Crop.exe.
-          Keep libs/ and runtime/jre/ in the same folder as the EXE.
+          Keep libs/, runtime/jre/, and ocr/ in the same folder as the EXE.
+          Experimental: OCR engine bundled for local processing (Portuguese/English).
+          OCR UI availability and searchable PDF output still require functional validation.
           No MSI installation is required. Windows 10/11 x64 and WebView2 are required.
           This build is unsigned. Verify provenance and scan before executing.
           IMPORTANT: application settings and backend workspace may still be stored
