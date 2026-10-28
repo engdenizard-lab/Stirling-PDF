@@ -62,6 +62,7 @@ jobs:
           if (!(Test-Path $exe)) { throw "No executable found at $exe" }
           Copy-Item $exe "$dest/Stirling-PDF-Crop.exe"
           Copy-Item 'src-tauri/libs' "$dest/libs" -Recurse
+          New-Item -ItemType Directory -Force -Path "$dest/runtime" | Out-Null
           Copy-Item 'src-tauri/runtime/jre' "$dest/runtime/jre" -Recurse
           if (!(Test-Path "$dest/runtime/jre/bin/java.exe")) { throw 'Bundled Java runtime missing' }
           if (@(Get-ChildItem "$dest/libs" -Filter '*.jar').Count -eq 0) { throw 'Backend JAR missing' }
