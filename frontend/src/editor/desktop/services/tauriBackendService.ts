@@ -290,9 +290,13 @@ export class TauriBackendService {
     );
 
     try {
+      // Always bypass corporate/system proxies for the bundled loopback backend.
+      // A proxy can make the UI report "Backend offline" while the local Java
+      // server is answering HTTP 200 with dependenciesReady=true.
       const response = await fetch(configUrl, {
         method: "GET",
         connectTimeout: 5000,
+        proxy: { noProxy: "localhost,127.0.0.1,::1" },
       });
 
       if (!response.ok) {
