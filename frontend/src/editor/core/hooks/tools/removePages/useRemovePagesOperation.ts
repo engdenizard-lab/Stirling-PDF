@@ -51,7 +51,7 @@ export const removePagesOperationConfig = defineCustomTool<RemovePagesParameters
     const output: File[] = [];
     for (const file of files) {
       const bytes = await removePagesLocally(new Uint8Array(await file.arrayBuffer()), params.pageNumbers);
-      output.push(new File([new Uint8Array(bytes)], file.name.replace(/\\.pdf$/i, "") + "_paginas_removidas.pdf", { type: "application/pdf" }));
+      output.push(new File([new Uint8Array(bytes)], file.name.replace(/\.pdf$/i, "") + "_paginas_removidas.pdf", { type: "application/pdf" }));
     }
     return { files: output };
   },
