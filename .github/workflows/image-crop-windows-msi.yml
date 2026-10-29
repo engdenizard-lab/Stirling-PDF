@@ -8,6 +8,14 @@ on:
       - 'frontend/src/editor/core/tools/pdfTextEditor/**'
       - 'frontend/src/editor/core/components/tools/ToolPicker.tsx'
       - 'frontend/src/editor/desktop/services/tauriBackendService.ts'
+      - 'frontend/src/editor/core/components/tools/shared/**'
+      - 'frontend/src/editor/core/components/tools/reorganizePages/**'
+      - 'frontend/src/editor/core/hooks/tools/shared/**'
+      - 'frontend/src/editor/core/hooks/tools/removePages/**'
+      - 'frontend/src/editor/core/hooks/tools/reorganizePages/**'
+      - 'frontend/src/editor/core/tools/RemovePages.tsx'
+      - 'frontend/src/editor/core/tools/ReorganizePages.tsx'
+      - 'frontend/src/editor/core/utils/localPdfPages*'
   workflow_dispatch:
 permissions:
   contents: read
@@ -35,7 +43,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --no-audit --no-fund
       - name: Run image crop regression tests
-        run: npx vitest run --project core src/editor/core/tools/pdfTextEditor/__tests__/ReplaceImageCommand.test.ts src/editor/core/tools/pdfTextEditor/__tests__/cropImagePixels.test.ts src/editor/core/tools/pdfTextEditor/__tests__/RotateImageByAngle.test.ts src/editor/core/tools/pdfTextEditor/__tests__/ocrPageScope.test.ts
+        run: npx vitest run --project core src/editor/core/tools/pdfTextEditor/__tests__/ReplaceImageCommand.test.ts src/editor/core/tools/pdfTextEditor/__tests__/cropImagePixels.test.ts src/editor/core/tools/pdfTextEditor/__tests__/RotateImageByAngle.test.ts src/editor/core/tools/pdfTextEditor/__tests__/ocrPageScope.test.ts src/editor/core/utils/localPdfPages.test.ts
       - name: Prepare backend JAR, JLink runtime and desktop resources
         working-directory: .
         shell: pwsh
