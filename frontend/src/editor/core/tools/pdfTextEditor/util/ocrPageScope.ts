@@ -54,7 +54,11 @@ export async function mergeSinglePageOcrResult(
   if (Math.abs(originalSize.width - recognizedSize.width) > 0.01 ||
       Math.abs(originalSize.height - recognizedSize.height) > 0.01 ||
       originalPage.getRotation().angle !== recognizedPage.getRotation().angle) {
-    throw new Error("OCR changed page dimensions or rotation; original PDF preserved");
+    throw new Error(
+      `OCR changed page dimensions or rotation; original PDF preserved ` +
+      `(original: ${originalSize.width}x${originalSize.height}, rotation ${originalPage.getRotation().angle}; ` +
+      `OCR: ${recognizedSize.width}x${recognizedSize.height}, rotation ${recognizedPage.getRotation().angle})`,
+    );
   }
   const [recognized] = await original.copyPages(result, [0]);
   original.removePage(selectedPage - 1);
