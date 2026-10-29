@@ -30,12 +30,20 @@ describe("OCR document / current-page scope", () => {
   it("replaces precisely the selected page and preserves page order", async () => {
     const pdf = await fixture();
     const recognized = await PDFDocument.create();
-    recognized.addPage([333, 600]);
+    recognized.addPage([300, 600]);
     const merged = await PDFDocument.load(
       await mergeSinglePageOcrResult(pdf, await recognized.save(), 2),
     );
     expect(merged.getPageCount()).toBe(3);
-    expect(merged.getPages().map((p) => p.getWidth())).toEqual([200, 333, 400]);
+    expect(merged.getPages().map((p) => p.getWidth())).toEqual([200, 300, 400]);
+  });
+
+  it("rejects OCR pages with changed dimensions", async () => {
+    const pdf = await fixture();
+    const altered = await PDFDocument.create();
+    altered.addPage([333, 600]);
+    await expect(mergeSinglePageOcrResult(pdf, await altered.save(), 2))
+      .rejects.toThrow("changed page dimensions");
   });
 
   it("rejects invalid pages and multipage OCR output", async () => {
