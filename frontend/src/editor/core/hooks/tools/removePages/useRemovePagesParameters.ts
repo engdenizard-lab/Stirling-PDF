@@ -3,7 +3,7 @@ import {
   useBaseParameters,
   BaseParametersHook,
 } from "@editor/hooks/tools/shared/useBaseParameters";
-import { validatePageNumbers } from "@editor/utils/pageSelection";
+
 
 export interface RemovePagesParameters extends BaseParameters {
   pageNumbers: string; // comma-separated page numbers or ranges (e.g., "1,3,5-8")
@@ -21,7 +21,11 @@ export type RemovePagesParametersHook =
 export function validateRemovePagesParameters(
   params: RemovePagesParameters,
 ): boolean {
-  return validatePageNumbers(params.pageNumbers);
+  // Offline processing supports explicit pages/ranges only. Mathematical
+  // expressions and open ranges belong to the backend implementation.
+  const parts = params.pageNumbers.split(",").map(part => part.trim());
+  return parts.length > 0 &&
+    parts.every(part => /^[1-9]\\d*(?:-[1-9]\\d*)?$/.test(part));
 }
 
 export const useRemovePagesParameters = (): RemovePagesParametersHook => {
