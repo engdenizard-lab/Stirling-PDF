@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/image-crop-windows-portable.yml'
       - 'frontend/src/editor/core/tools/pdfTextEditor/**'
+      - 'frontend/src/editor/core/components/tools/ToolPicker.tsx'
       - 'frontend/src-tauri/**'
   workflow_dispatch:
 permissions:
