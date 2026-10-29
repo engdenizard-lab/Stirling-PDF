@@ -1,13 +1,14 @@
 import { useTranslation } from "react-i18next";
 import {
   useToolOperation,
-  defineSingleFileTool,
+  defineCustomTool,
 } from "@editor/hooks/tools/shared/useToolOperation";
 import {
   objectToFormData,
   type ToolApiParams,
   type ToolEndpoint,
 } from "@editor/hooks/tools/shared/toolApiMapping";
+import { removePagesLocally } from "@editor/utils/localPdfPages";
 import { createStandardErrorHandler } from "@editor/utils/toolErrorHandler";
 import {
   validateRemovePagesParameters,
@@ -42,14 +43,18 @@ export const buildRemovePagesFormData = (
 ): FormData =>
   objectToFormData(removePagesToApiParams(parameters), { fileInput: file });
 
-export const removePagesOperationConfig = defineSingleFileTool({
+export const removePagesOperationConfig = defineCustomTool<RemovePagesParameters>({
   validateParams: validateRemovePagesParameters,
-  buildFormData: buildRemovePagesFormData,
-  toApiParams: removePagesToApiParams,
-  fromApiParams: removePagesFromApiParams,
   operationType: "removePages",
-  endpoint: ENDPOINT,
   defaultParameters,
+  customProcessor: async (params, files) => {
+    const output: File[] = [];
+    for (const file of files) {
+      const bytes = await removePagesLocally(new Uint8Array(await file.arrayBuffer()), params.pageNumbers);
+      output.push(new File([new Uint8Array(bytes)], file.name.replace(/\\.pdf$/i, "") + "_paginas_removidas.pdf", { type: "application/pdf" }));
+    }
+    return { files: output };
+  },
 });
 
 export const useRemovePagesOperation = () => {
