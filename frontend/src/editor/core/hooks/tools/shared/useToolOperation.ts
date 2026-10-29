@@ -296,7 +296,11 @@ export const useToolOperation = <TParams>(
       // Custom processors without an endpoint skip this — they manage their own backend calls.
       const endpointForReadyCheck =
         config.toolType !== ToolType.custom ? runtimeEndpoint : undefined;
-      const backendReady = await ensureBackendReady(endpointForReadyCheck);
+      // Purely local custom tools have no endpoint and must remain usable
+      // when the Java sidecar is offline. Keep health checks for routed tools.
+      const backendReady = config.toolType === ToolType.custom && !runtimeEndpoint
+        ? true
+        : await ensureBackendReady(endpointForReadyCheck);
       if (!backendReady) {
         actions.setError(
           t(
