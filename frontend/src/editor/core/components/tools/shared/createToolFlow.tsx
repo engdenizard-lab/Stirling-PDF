@@ -66,6 +66,8 @@ export interface ExecuteButtonConfig {
   disabled?: boolean;
   testId?: string;
   showCloudBadge?: boolean;
+  /** Local PDF operations run without the backend health check. */
+  allowOffline?: boolean;
   /** Suppress the automatic "(this file)" / "(N files)" scope hints in the button text. */
   disableScopeHints?: boolean;
 }
@@ -185,6 +187,7 @@ export function createToolFlow<TParams = unknown>(
                   disabledReason={effectiveDisabledReason}
                   loadingText={eb.loadingText}
                   submitText={eb.text}
+                  allowOffline={eb.allowOffline}
                   showCloudBadge={
                     eb.showCloudBadge ??
                     config.review.operation.willUseCloud ??
