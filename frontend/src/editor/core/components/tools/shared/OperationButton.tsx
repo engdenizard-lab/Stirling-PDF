@@ -24,6 +24,8 @@ export interface OperationButtonProps {
   mt?: string;
   type?: "button" | "submit" | "reset";
   showCloudBadge?: boolean;
+  /** Only for tools that execute entirely locally without the Java backend. */
+  allowOffline?: boolean;
   "data-testid"?: string;
   "data-tour"?: string;
 }
@@ -61,13 +63,14 @@ const OperationButton = ({
   mt = "md",
   type = "button",
   showCloudBadge = false,
+  allowOffline = false,
   "data-testid": dataTestId,
   "data-tour": dataTour,
 }: OperationButtonProps) => {
   const { t } = useTranslation();
   const { isOnline, message: backendMessage } = useBackendHealth();
   const { onEndpointUnavailableClick } = useToolActions();
-  const blockedByBackend = !isOnline;
+  const blockedByBackend = !allowOffline && !isOnline;
 
   const effectiveDisabled =
     disabled || (disabledReason !== null && disabledReason !== undefined);
