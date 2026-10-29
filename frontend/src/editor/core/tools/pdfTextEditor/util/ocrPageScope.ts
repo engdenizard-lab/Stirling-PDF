@@ -45,6 +45,17 @@ export async function mergeSinglePageOcrResult(
   const result = await PDFDocument.load(ocrPageBytes);
   if (result.getPageCount() !== 1)
     throw new Error("OCR result must contain exactly one page");
+  const originalPage = original.getPage(selectedPage - 1);
+  const recognizedPage = result.getPage(0);
+  const originalSize = originalPage.getSize();
+  const recognizedSize = recognizedPage.getSize();
+  // Do not silently resize an original page during OCR. OCR text positions
+  // would be incorrect if the result were simply resized after recognition.
+  if (Math.abs(originalSize.width - recognizedSize.width) > 0.01 ||
+      Math.abs(originalSize.height - recognizedSize.height) > 0.01 ||
+      originalPage.getRotation().angle !== recognizedPage.getRotation().angle) {
+    throw new Error("OCR changed page dimensions or rotation; original PDF preserved");
+  }
   const [recognized] = await original.copyPages(result, [0]);
   original.removePage(selectedPage - 1);
   original.insertPage(selectedPage - 1, recognized);
