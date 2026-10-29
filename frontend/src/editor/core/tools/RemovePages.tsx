@@ -22,7 +22,7 @@ const RemovePages = (props: BaseToolProps) => {
     <RemovePagesSettings
       parameters={base.params.parameters}
       onParameterChange={base.params.updateParameter}
-      disabled={base.endpointLoading}
+      disabled={false}
     />
   );
 
@@ -47,7 +47,8 @@ const RemovePages = (props: BaseToolProps) => {
       loadingText: t("loading"),
       onClick: base.handleExecute,
       isVisible: !base.hasResults,
-      endpointEnabled: base.endpointEnabled,
+      endpointEnabled: true,
+      allowOffline: true,
       paramsValid: base.params.validateParameters(),
     },
     review: {
