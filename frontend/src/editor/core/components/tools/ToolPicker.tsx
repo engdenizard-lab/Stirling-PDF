@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Box, Stack } from "@mantine/core";
 import { useTranslation } from "react-i18next";
 import { Button } from "@editor/ui/Button";
@@ -60,6 +60,40 @@ const toTitleCase = (s: string) =>
     /\w\S*/g,
     (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase(),
   );
+
+/** Each category remembers its expanded state without changing tool selection. */
+function CollapsibleToolGroup({
+  id, label, defaultOpen = false, children,
+}: {
+  id: string; label: string; defaultOpen?: boolean; children: React.ReactNode;
+}) {
+  const key = `stirling-crop:tool-group:${id}`;
+  const [open, setOpen] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem(key);
+      return stored === null ? defaultOpen : stored === "true";
+    } catch {
+      return defaultOpen;
+    }
+  });
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    try { window.localStorage.setItem(key, String(next)); } catch { /* storage disabled */ }
+  };
+  return (
+    <Box w="100%">
+      <button type="button" onClick={toggle} aria-expanded={open}
+        aria-label={`${open ? "Recolher" : "Expandir"}: ${label}`}
+        style={{ ...HEADER_TEXT_STYLE, width: "100%", display: "flex", alignItems: "center",
+          justifyContent: "space-between", background: "transparent", border: 0,
+          cursor: "pointer", textAlign: "left" }}>
+        <span>{label}</span><span aria-hidden="true">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && <div>{children}</div>}
+    </Box>
+  );
+}
 
 const ToolPicker = ({
   selectedToolKey,
@@ -198,11 +232,7 @@ const ToolPicker = ({
             {/* All-tools view: favourites + recommended + all subcategories. */}
             <Stack px="sm" pb="sm" pt={4} gap="xs">
               {favoriteToolItems.length > 0 && (
-                <Box w="100%">
-                  <div style={HEADER_TEXT_STYLE}>
-                    {t("toolPanel.fullscreen.favorites", "Favourites")}
-                  </div>
-                  <div>
+                <CollapsibleToolGroup id="favorites" label={t("toolPanel.fullscreen.favorites", "Favourites")} defaultOpen>
                     {favoriteToolItems.map(({ id, tool }) => (
                       <ToolButton
                         key={`fav-${id}`}
@@ -213,15 +243,10 @@ const ToolPicker = ({
                         hasStars
                       />
                     ))}
-                  </div>
-                </Box>
+                </CollapsibleToolGroup>
               )}
               {recommendedItems.length > 0 && (
-                <Box w="100%">
-                  <div style={HEADER_TEXT_STYLE}>
-                    {t("toolPanel.fullscreen.recommended", "Recommended")}
-                  </div>
-                  <div>
+                <CollapsibleToolGroup id="recommended" label={t("toolPanel.fullscreen.recommended", "Recommended")}>
                     {recommendedItems.map(({ id, tool }) => (
                       <ToolButton
                         key={`rec-${id}`}
@@ -232,8 +257,7 @@ const ToolPicker = ({
                         hasStars
                       />
                     ))}
-                  </div>
-                </Box>
+                </CollapsibleToolGroup>
               )}
               {allSection &&
                 allSection.subcategories.map((sc: SubcategoryGroup) => (
@@ -245,10 +269,7 @@ const ToolPicker = ({
                       getSubcategoryLabel(t, sc.subcategoryId),
                     )}
                   >
-                    <Box w="100%">
-                      <div style={HEADER_TEXT_STYLE}>
-                        {toTitleCase(getSubcategoryLabel(t, sc.subcategoryId))}
-                      </div>
+                    <CollapsibleToolGroup id={String(sc.subcategoryId)} label={toTitleCase(getSubcategoryLabel(t, sc.subcategoryId))}>
                       {renderToolButtons(
                         t,
                         sc,
@@ -259,7 +280,7 @@ const ToolPicker = ({
                         undefined,
                         true,
                       )}
-                    </Box>
+                    </CollapsibleToolGroup>
                   </LazyToolSection>
                 ))}
             </Stack>
