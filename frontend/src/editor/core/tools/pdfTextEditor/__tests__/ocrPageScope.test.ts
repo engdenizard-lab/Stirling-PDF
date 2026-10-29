@@ -29,10 +29,11 @@ describe("OCR document / current-page scope", () => {
 
   it("replaces precisely the selected page and preserves page order", async () => {
     const pdf = await fixture();
-    const recognized = await PDFDocument.create();
-    recognized.addPage([300, 600]);
+    // A real OCR request operates on the extracted page, preserving its
+    // media box and inherited page geometry rather than creating a blank page.
+    const recognized = await extractOcrInput(pdf, { mode: "current", page: 2 });
     const merged = await PDFDocument.load(
-      await mergeSinglePageOcrResult(pdf, await recognized.save(), 2),
+      await mergeSinglePageOcrResult(pdf, recognized, 2),
     );
     expect(merged.getPageCount()).toBe(3);
     expect(merged.getPages().map((p) => p.getWidth())).toEqual([200, 300, 400]);
