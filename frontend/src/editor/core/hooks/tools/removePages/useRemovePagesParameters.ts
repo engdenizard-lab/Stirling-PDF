@@ -25,7 +25,7 @@ export function validateRemovePagesParameters(
   // expressions and open ranges belong to the backend implementation.
   const parts = params.pageNumbers.split(",").map(part => part.trim());
   return parts.length > 0 &&
-    parts.every(part => /^[1-9]\\d*(?:-[1-9]\\d*)?$/.test(part));
+    parts.every(part => /^[1-9]\d*(?:-[1-9]\d*)?$/.test(part));
 }
 
 export const useRemovePagesParameters = (): RemovePagesParametersHook => {
