@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/image-crop-windows-msi.yml'
       - 'frontend/src/editor/core/tools/pdfTextEditor/**'
+      - 'frontend/src/editor/core/components/tools/ToolPicker.tsx'
   workflow_dispatch:
 permissions:
   contents: read
