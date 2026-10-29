@@ -8,6 +8,7 @@ import { useAccordionSteps } from "@editor/hooks/tools/shared/useAccordionSteps"
 import ReorganizePagesSettings from "@editor/components/tools/reorganizePages/ReorganizePagesSettings";
 import { useReorganizePagesParameters } from "@editor/hooks/tools/reorganizePages/useReorganizePagesParameters";
 import { useReorganizePagesOperation } from "@editor/hooks/tools/reorganizePages/useReorganizePagesOperation";
+import { useLocalReorganizePagesOperation } from "@editor/hooks/tools/reorganizePages/useLocalReorganizePagesOperation";
 
 const ReorganizePages = ({
   onPreviewFile,
@@ -18,7 +19,10 @@ const ReorganizePages = ({
   const selectedFiles = useViewScopedFiles();
 
   const params = useReorganizePagesParameters();
-  const operation = useReorganizePagesOperation();
+  const backendOperation = useReorganizePagesOperation();
+  const localOperation = useLocalReorganizePagesOperation();
+  const localMode = params.parameters.customMode === "";
+  const operation = localMode ? localOperation : backendOperation;
 
   const { enabled: endpointEnabled, loading: endpointLoading } =
     useEndpointEnabled("rearrange-pages");
@@ -74,7 +78,8 @@ const ReorganizePages = ({
         <ReorganizePagesSettings
           parameters={params.parameters}
           onParameterChange={params.updateParameter}
-          disabled={endpointLoading}
+          disabled={!localMode && endpointLoading}
+          file={selectedFiles.length === 1 ? selectedFiles[0] : undefined}
         />
       ),
     },
@@ -93,8 +98,9 @@ const ReorganizePages = ({
       isVisible: !hasResults,
       loadingText: t("loading"),
       onClick: handleExecute,
-      endpointEnabled: endpointEnabled,
-      paramsValid: params.validateParameters(),
+      endpointEnabled: localMode ? true : endpointEnabled,
+      allowOffline: localMode,
+      paramsValid: params.validateParameters() && (!localMode || selectedFiles.length === 1),
     },
     review: {
       isVisible: hasResults,
