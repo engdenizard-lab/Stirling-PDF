@@ -668,6 +668,31 @@ pub async fn start_backend(
     Ok("Backend startup initiated successfully with bundled JRE".to_string())
 }
 
+/// Probe only the bundled loopback backend. The native Rust HTTP client
+/// bypasses system and corporate proxies, unlike WebView/plugin requests.
+#[tauri::command]
+pub async fn check_local_backend_health() -> bool {
+    let Some(port) = get_backend_port() else { return false };
+    let url = format!("http://127.0.0.1:{port}/api/v1/config/app-config");
+    let client = match reqwest::Client::builder()
+        .no_proxy()
+        .timeout(Duration::from_secs(5))
+        .build()
+    {
+        Ok(client) => client,
+        Err(_) => return false,
+    };
+    match client.get(url).send().await {
+        Ok(response) if response.status().is_success() => {
+            match response.json::<serde_json::Value>().await {
+                Ok(json) => json.get("dependenciesReady").and_then(|v| v.as_bool()) == Some(true),
+                Err(_) => false,
+            }
+        }
+        _ => false,
+    }
+}
+
 // Get the dynamically assigned backend port
 #[tauri::command]
 pub fn get_backend_port() -> Option<u16> {
