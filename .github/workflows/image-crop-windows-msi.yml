@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/image-crop-windows-msi.yml'
       - 'frontend/src/editor/core/tools/pdfTextEditor/**'
+      - 'frontend/vite.config.ts'
       - 'frontend/src/editor/core/components/tools/ToolPicker.tsx'
       - 'frontend/src/editor/desktop/services/tauriBackendService.ts'
       - 'frontend/src/editor/core/components/tools/shared/**'
