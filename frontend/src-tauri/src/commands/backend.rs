@@ -282,6 +282,36 @@ fn copy_dir_recursive(src: &Path, dest: &Path) -> std::io::Result<()> {
 }
 
 // Create, configure and run the Java command to run Stirling-PDF JAR
+/// Enumerate OCR languages installed beside the desktop application without
+/// requiring a running Java backend or a proxy-sensitive HTTP request.
+/// This is metadata only: recognizing text still requires the OCR engine.
+#[tauri::command]
+pub fn get_bundled_ocr_languages(app: tauri::AppHandle) -> Vec<String> {
+    use tauri::Manager;
+    let Ok(resources) = app.path().resource_dir() else {
+        return Vec::new();
+    };
+    let folder = resources.join("ocr").join("tessdata");
+    let Ok(entries) = std::fs::read_dir(folder) else {
+        return Vec::new();
+    };
+    let mut langs: Vec<String> = entries
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().is_file())
+        .filter_map(|entry| {
+            let path = entry.path();
+            if path.extension().and_then(|ext| ext.to_str()) != Some("traineddata") {
+                return None;
+            }
+            let name = path.file_stem()?.to_str()?.to_string();
+            if name.eq_ignore_ascii_case("osd") { None } else { Some(name) }
+        })
+        .collect();
+    langs.sort();
+    langs.dedup();
+    langs
+}
+
 fn run_stirling_pdf_jar(app: &tauri::AppHandle, java_path: &PathBuf, jar_path: &PathBuf) -> Result<(), String> {
     // Get platform-specific application data directory for Tauri mode
     let app_data_dir = app_data_dir();
@@ -391,36 +421,6 @@ fn run_stirling_pdf_jar(app: &tauri::AppHandle, java_path: &PathBuf, jar_path: &
     ));
     sweep_stale_shutdown_files(&work_dir, &shutdown_file);
     *BACKEND_SHUTDOWN_FILE.lock().unwrap() = Some(shutdown_file.clone());
-
-/// Enumerate OCR languages installed beside the desktop application without
-/// requiring a running Java backend or a proxy-sensitive HTTP request.
-/// This is metadata only: recognizing text still requires the OCR engine.
-#[tauri::command]
-pub fn get_bundled_ocr_languages(app: tauri::AppHandle) -> Vec<String> {
-    use tauri::Manager;
-    let Ok(resources) = app.path().resource_dir() else {
-        return Vec::new();
-    };
-    let folder = resources.join("ocr").join("tessdata");
-    let Ok(entries) = std::fs::read_dir(folder) else {
-        return Vec::new();
-    };
-    let mut langs: Vec<String> = entries
-        .filter_map(Result::ok)
-        .filter(|entry| entry.path().is_file())
-        .filter_map(|entry| {
-            let path = entry.path();
-            if path.extension().and_then(|ext| ext.to_str()) != Some("traineddata") {
-                return None;
-            }
-            let name = path.file_stem()?.to_str()?.to_string();
-            if name.eq_ignore_ascii_case("osd") { None } else { Some(name) }
-        })
-        .collect();
-    langs.sort();
-    langs.dedup();
-    langs
-}
 
     // Optional bundled OCR engine for the experimental offline desktop build.
     // Keep detection explicit: do not claim OCR is available when Tesseract is absent.
