@@ -1,5 +1,4 @@
 import { invoke } from "@tauri-apps/api/core";
-import { fetch } from "@tauri-apps/plugin-http";
 import { alert } from "@editor/components/toast";
 import i18n from "i18next";
 
@@ -284,42 +283,18 @@ export class TauriBackendService {
       return false;
     }
 
-    const configUrl = `http://127.0.0.1:${this.backendPort}/api/v1/config/app-config`;
-    console.debug(
-      `[TauriBackendService] Checking local backend health at: ${configUrl}`,
-    );
-
     try {
-      // Always bypass corporate/system proxies for the bundled loopback backend.
-      // A proxy can make the UI report "Backend offline" while the local Java
-      // server is answering HTTP 200 with dependenciesReady=true.
-      const response = await fetch(configUrl, {
-        method: "GET",
-        connectTimeout: 5000,
-        proxy: { noProxy: "localhost,127.0.0.1,::1" },
-      });
-
-      if (!response.ok) {
-        console.warn(
-          `[TauriBackendService] Health check failed: ${response.status}`,
-        );
-        this.setStatus(this.isInStartupGrace() ? "starting" : "unhealthy");
-        return false;
-      }
-
-      const data = await response.json();
-      const dependenciesReady = data.dependenciesReady === true;
-      console.debug(
-        `[TauriBackendService] dependenciesReady=${dependenciesReady}`,
-      );
-
-      if (dependenciesReady) {
-        this.hasBeenHealthy = true;
-      }
-      this.setStatus(dependenciesReady ? "healthy" : "starting");
+      // Native Tauri command checks the actual local Spring app-config endpoint.
+      // It does not inherit proxy configuration and does not mark a dead Java
+      // process healthy merely because a port number was discovered.
+      const dependenciesReady = await invoke<boolean>("check_local_backend_health");
+      if (dependenciesReady) this.hasBeenHealthy = true;
+      this.setStatus(dependenciesReady
+        ? "healthy"
+        : this.isInStartupGrace() ? "starting" : "unhealthy");
       return dependenciesReady;
     } catch (error) {
-      console.error("[TauriBackendService] Health check error:", error);
+      console.error("[TauriBackendService] Native health check failed:", error);
       this.setStatus(this.isInStartupGrace() ? "starting" : "unhealthy");
       return false;
     }
