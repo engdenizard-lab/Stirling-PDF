@@ -1,4 +1,5 @@
 import { Box, Group, Tooltip } from "@mantine/core";
+import { EditorPageNavigation } from "@editor/tools/pdfTextEditor/components/EditorPageNavigation";
 import { Icon } from "@editor/ui/Icon";
 import { useTranslation } from "react-i18next";
 import { Button } from "@editor/ui/Button";
@@ -8,6 +9,7 @@ import { modShortcut } from "@editor/utils/hotkeys";
 
 interface Props {
   compact: boolean;
+  pageCount: number;
   openedFileName: string | null;
   dirty: boolean;
   currentFileId: FileId | null;
@@ -20,6 +22,7 @@ interface Props {
 
 export function EditorPanelActions({
   compact,
+  pageCount,
   openedFileName,
   dirty,
   currentFileId,
@@ -43,6 +46,7 @@ export function EditorPanelActions({
       }}
       data-testid="pdf-editor-panel-actions"
     >
+      {pageCount > 0 && <EditorPageNavigation pageCount={pageCount} />}
       {compact && openedFileName && (
         <Group gap={6} wrap="nowrap" mb={8}>
           <EditorFileSwitcher
