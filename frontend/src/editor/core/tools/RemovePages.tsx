@@ -23,6 +23,7 @@ const RemovePages = (props: BaseToolProps) => {
       parameters={base.params.parameters}
       onParameterChange={base.params.updateParameter}
       disabled={false}
+      file={base.selectedFiles.length === 1 ? base.selectedFiles[0] : null}
     />
   );
 
