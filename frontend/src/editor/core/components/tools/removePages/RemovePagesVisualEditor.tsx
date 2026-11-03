@@ -157,7 +157,8 @@ export default function RemovePagesVisualEditor({
             alignItems: "flex-start", justifyContent: "center",
             background: "var(--c-surface)", padding: 8,
           }}>
-            {loadingPreview || !thumbnailsReady ? <Loader aria-label="Carregando página" /> :
+            {error && !thumbnailsReady ? <Text c="red" size="sm">Não foi possível carregar a visualização.</Text> :
+              loadingPreview || !thumbnailsReady ? <Loader aria-label="Carregando página" /> :
               pagePreview ? <img src={pagePreview} alt={`Visualização completa da página ${activePage}`}
                 style={{ maxWidth: "100%", height: "auto", objectFit: "contain" }} /> :
                 <Text c="dimmed" size="sm">Carregando documento...</Text>}
