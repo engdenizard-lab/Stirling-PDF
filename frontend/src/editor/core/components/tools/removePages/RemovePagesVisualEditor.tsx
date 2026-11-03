@@ -21,6 +21,8 @@ export default function RemovePagesVisualEditor({
   const [thumbnails, setThumbnails] = useState<Record<number, string>>({});
   const [pagePreview, setPagePreview] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [thumbnailsReady, setThumbnailsReady] = useState(false);
+  const [selectionWarning, setSelectionWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const bytesRef = useRef<ArrayBuffer | null>(null);
   const loadSequenceRef = useRef(0);
@@ -37,6 +39,8 @@ export default function RemovePagesVisualEditor({
     setTotal(0);
     setActivePage(1);
     setThumbnails({});
+    setThumbnailsReady(false);
+    setSelectionWarning(null);
     setPagePreview(null);
     setError(null);
     bytesRef.current = null;
@@ -61,6 +65,7 @@ export default function RemovePagesVisualEditor({
               }));
           },
         );
+        if (!cancelled && loadSequenceRef.current === sequence) setThumbnailsReady(true);
       } catch (reason) {
         if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason));
       }
@@ -69,7 +74,7 @@ export default function RemovePagesVisualEditor({
   }, [opened, file?.fileId]);
 
   useEffect(() => {
-    if (!opened || !file || !bytesRef.current || total < 1) return;
+    if (!opened || !file || !bytesRef.current || total < 1 || !thumbnailsReady) return;
     let cancelled = false;
     const sequence = ++previewSequenceRef.current;
     setLoadingPreview(true);
@@ -87,12 +92,17 @@ export default function RemovePagesVisualEditor({
       if (!cancelled && previewSequenceRef.current === sequence) setLoadingPreview(false);
     });
     return () => { cancelled = true; previewSequenceRef.current++; };
-  }, [opened, file?.fileId, activePage, total]);
+  }, [opened, file?.fileId, activePage, total, thumbnailsReady]);
 
   const togglePage = (page: number) => {
+    setSelectionWarning(null);
     const next = new Set(selected);
     if (next.has(page)) next.delete(page);
     else next.add(page);
+    if (next.size >= total) {
+      setSelectionWarning("É necessário manter pelo menos uma página no PDF.");
+      return;
+    }
     onSelectionChange([...next].sort((a, b) => a - b).join(","));
   };
 
@@ -110,6 +120,7 @@ export default function RemovePagesVisualEditor({
           </Badge>
         </Group>
         {error && <Text c="red" size="sm" role="alert">{error}</Text>}
+        {selectionWarning && <Text c="orange" size="sm" role="alert">{selectionWarning}</Text>}
         <div style={{ display: "flex", gap: 12, height: "min(70vh, 680px)", minHeight: 310 }}>
           <aside aria-label="Miniaturas das páginas" style={{
             width: 185, flexShrink: 0, overflowY: "auto",
@@ -146,7 +157,7 @@ export default function RemovePagesVisualEditor({
             alignItems: "flex-start", justifyContent: "center",
             background: "var(--c-surface)", padding: 8,
           }}>
-            {loadingPreview ? <Loader aria-label="Carregando página" /> :
+            {loadingPreview || !thumbnailsReady ? <Loader aria-label="Carregando página" /> :
               pagePreview ? <img src={pagePreview} alt={`Visualização completa da página ${activePage}`}
                 style={{ maxWidth: "100%", height: "auto", objectFit: "contain" }} /> :
                 <Text c="dimmed" size="sm">Carregando documento...</Text>}
