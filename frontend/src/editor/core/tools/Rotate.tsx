@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { createToolFlow } from "@editor/components/tools/shared/createToolFlow";
 import RotateSettings from "@editor/components/tools/rotate/RotateSettings";
 import { useRotateParameters } from "@editor/hooks/tools/rotate/useRotateParameters";
-import { useRotateOperation } from "@editor/hooks/tools/rotate/useRotateOperation";
+import { useLocalRotateOperation } from "@editor/hooks/tools/rotate/useLocalRotateOperation";
 import { useBaseTool } from "@editor/hooks/tools/shared/useBaseTool";
 import { BaseToolProps, ToolComponent } from "@editor/types/tool";
 import { useRotateTips } from "@editor/components/tooltips/useRotateTips";
@@ -14,7 +14,7 @@ const Rotate = (props: BaseToolProps) => {
   const base = useBaseTool(
     "rotate",
     useRotateParameters,
-    useRotateOperation,
+    useLocalRotateOperation,
     props,
   );
 
@@ -34,7 +34,7 @@ const Rotate = (props: BaseToolProps) => {
         content: (
           <RotateSettings
             parameters={base.params}
-            disabled={base.endpointLoading}
+            disabled={false}
           />
         ),
       },
@@ -44,7 +44,8 @@ const Rotate = (props: BaseToolProps) => {
       isVisible: !base.hasResults,
       loadingText: t("loading"),
       onClick: base.handleExecute,
-      endpointEnabled: base.endpointEnabled,
+      endpointEnabled: true,
+      allowOffline: true,
       paramsValid: base.params.validateParameters(),
     },
     review: {
