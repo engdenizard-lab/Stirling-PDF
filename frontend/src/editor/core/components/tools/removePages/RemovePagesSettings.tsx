@@ -1,4 +1,7 @@
-import { Stack, TextInput } from "@mantine/core";
+import { Button, Stack, TextInput, Text } from "@mantine/core";
+import { useState } from "react";
+import type { StirlingFile } from "@editor/types/fileContext";
+import RemovePagesVisualEditor from "@editor/components/tools/removePages/RemovePagesVisualEditor";
 import { useTranslation } from "react-i18next";
 import { RemovePagesParameters } from "@editor/hooks/tools/removePages/useRemovePagesParameters";
 import { validatePageNumbers } from "@editor/utils/pageSelection";
@@ -10,20 +13,22 @@ interface RemovePagesSettingsProps {
     value: RemovePagesParameters[K],
   ) => void;
   disabled?: boolean;
+  file?: StirlingFile | null;
 }
 
 const RemovePagesSettings = ({
   parameters,
   onParameterChange,
   disabled = false,
+  file = null,
 }: RemovePagesSettingsProps) => {
   const { t } = useTranslation();
+  const [visualOpen, setVisualOpen] = useState(false);
 
   const handlePageNumbersChange = (value: string) => {
     // Allow user to type naturally - don't normalize input in real-time
     onParameterChange("pageNumbers", value);
   };
-  console.log("Current pageNumbers input:", parameters.pageNumbers, disabled);
 
   // Check if current input is valid
   const isValid = validatePageNumbers(parameters.pageNumbers || "");
@@ -31,6 +36,17 @@ const RemovePagesSettings = ({
 
   return (
     <Stack gap="md">
+      <Button variant="light" onClick={() => setVisualOpen(true)} disabled={disabled || !file} fullWidth>
+        Selecionar páginas visualmente
+      </Button>
+      <Text size="xs" c="dimmed">Visualize cada página e marque as que deseja remover.</Text>
+      <RemovePagesVisualEditor
+        opened={visualOpen}
+        onClose={() => setVisualOpen(false)}
+        file={file}
+        selection={parameters.pageNumbers}
+        onSelectionChange={value => onParameterChange("pageNumbers", value)}
+      />
       <TextInput
         label={t("removePages.pageNumbers.label", "Pages to Remove")}
         value={parameters.pageNumbers || ""}
