@@ -11,7 +11,7 @@ pub mod updater;
 pub mod watcher;
 pub mod window;
 
-pub use backend::{cleanup_backend, get_backend_port, get_bundled_ocr_languages, start_backend};
+pub use backend::{check_local_backend_health, cleanup_backend, get_backend_port, get_bundled_ocr_languages, start_backend};
 pub use files::{
     add_opened_file, clear_opened_files, file_disk_state, get_opened_files, pop_opened_files,
 };
