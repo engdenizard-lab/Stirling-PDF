@@ -23,7 +23,8 @@ export default function RemovePagesVisualEditor({
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bytesRef = useRef<ArrayBuffer | null>(null);
-  const sequenceRef = useRef(0);
+  const loadSequenceRef = useRef(0);
+  const previewSequenceRef = useRef(0);
   const selected = (() => {
     try { return new Set(parseLocalPageSelection(selection, total)); }
     catch { return new Set<number>(); }
@@ -32,7 +33,7 @@ export default function RemovePagesVisualEditor({
   useEffect(() => {
     if (!opened || !file) return;
     let cancelled = false;
-    const sequence = ++sequenceRef.current;
+    const sequence = ++loadSequenceRef.current;
     setTotal(0);
     setActivePage(1);
     setThumbnails({});
@@ -43,7 +44,7 @@ export default function RemovePagesVisualEditor({
       try {
         const bytes = await file.arrayBuffer();
         const pdf = await PDFDocument.load(bytes);
-        if (cancelled || sequenceRef.current !== sequence) return;
+        if (cancelled || loadSequenceRef.current !== sequence) return;
         bytesRef.current = bytes;
         const count = pdf.getPageCount();
         setTotal(count);
@@ -51,7 +52,7 @@ export default function RemovePagesVisualEditor({
         await thumbnailGenerationService.generateThumbnails(
           file.fileId, bytes, numbers, { scale: 0.15, quality: 0.72 },
           progress => {
-            if (!cancelled && sequenceRef.current === sequence)
+            if (!cancelled && loadSequenceRef.current === sequence)
               setThumbnails(old => ({
                 ...old,
                 ...Object.fromEntries(progress.thumbnails
@@ -64,28 +65,28 @@ export default function RemovePagesVisualEditor({
         if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason));
       }
     })();
-    return () => { cancelled = true; sequenceRef.current++; bytesRef.current = null; };
+    return () => { cancelled = true; loadSequenceRef.current++; bytesRef.current = null; };
   }, [opened, file?.fileId]);
 
   useEffect(() => {
     if (!opened || !file || !bytesRef.current || total < 1) return;
     let cancelled = false;
-    const sequence = ++sequenceRef.current;
+    const sequence = ++previewSequenceRef.current;
     setLoadingPreview(true);
     setPagePreview(null);
     void thumbnailGenerationService.generateThumbnails(
       file.fileId, bytesRef.current, [activePage], { scale: 0.95, quality: 0.9 },
     ).then(results => {
-      if (!cancelled && sequenceRef.current === sequence) {
+      if (!cancelled && previewSequenceRef.current === sequence) {
         setPagePreview(results[0]?.thumbnail || null);
         if (!results[0]?.success) setError(results[0]?.error || "Não foi possível visualizar esta página.");
       }
     }).catch(reason => {
       if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason));
     }).finally(() => {
-      if (!cancelled && sequenceRef.current === sequence) setLoadingPreview(false);
+      if (!cancelled && previewSequenceRef.current === sequence) setLoadingPreview(false);
     });
-    return () => { cancelled = true; sequenceRef.current++; };
+    return () => { cancelled = true; previewSequenceRef.current++; };
   }, [opened, file?.fileId, activePage, total]);
 
   const togglePage = (page: number) => {
