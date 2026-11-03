@@ -19,6 +19,7 @@ use commands::{
     is_default_pdf_handler,
     get_auth_token,
     get_backend_port,
+    check_local_backend_health,
     get_bundled_ocr_languages,
     get_connection_config,
     get_opened_files,
@@ -233,6 +234,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       start_backend,
       get_backend_port,
+      check_local_backend_health,
       get_bundled_ocr_languages,
       get_opened_files,
       commands::file_drop::resolve_dropped_file_paths,
