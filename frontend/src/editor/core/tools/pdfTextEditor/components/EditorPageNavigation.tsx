@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Group, NumberInput, Tooltip } from "@mantine/core";
 import { Icon } from "@editor/ui/Icon";
 import { Button } from "@editor/ui/Button";
-import { visiblePageNumber } from "@editor/tools/pdfTextEditor/util/dom";
 
 /**
  * The editor owns a separate scroll area from the PDF viewer. Track its
@@ -14,13 +13,28 @@ export function EditorPageNavigation({ pageCount }: { pageCount: number }) {
   const [typed, setTyped] = useState<number | string>(1);
 
   useEffect(() => {
-    const stage = document.querySelector<HTMLElement>('[data-testid="pdf-editor-stage"]');
+    const root = document.querySelector<HTMLElement>('[data-testid="pdf-editor-stage"]');
+    const stage = root?.querySelector<HTMLElement>("[data-radix-scroll-area-viewport], .mantine-ScrollArea-viewport") ?? root;
     if (!stage || pageCount < 1) return;
     let raf = 0;
     const update = () => {
       window.cancelAnimationFrame(raf);
       raf = window.requestAnimationFrame(() => {
-        const current = Math.max(1, Math.min(pageCount, visiblePageNumber() + 1));
+        const viewportMid = stage.getBoundingClientRect().top + stage.clientHeight / 2;
+        let current = 1;
+        let distance = Number.POSITIVE_INFINITY;
+        const pages = root?.querySelectorAll<HTMLElement>('[data-testid^="pdf-editor-page-"]') ?? [];
+        pages.forEach(el => {
+          const id = el.dataset.testid ?? "";
+          const match = /^pdf-editor-page-(\\d+)$/.exec(id);
+          if (!match) return;
+          const rect = el.getBoundingClientRect();
+          const delta = Math.abs((rect.top + rect.bottom) / 2 - viewportMid);
+          if (delta < distance) {
+            distance = delta;
+            current = Math.max(1, Math.min(pageCount, Number(match[1]) + 1));
+          }
+        });
         setPage(current);
         setTyped(current);
       });
