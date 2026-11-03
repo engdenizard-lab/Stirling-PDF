@@ -659,10 +659,14 @@ export default defineConfig(async ({ mode, command }) => {
         ],
       }),
       ...(effectiveMode === "desktop" ? [] : [compressStaticCopyPlugin()]),
-      prerenderOgPlugin({
-        isSaas: effectiveMode === "saas",
-        precompress: effectiveMode !== "desktop",
-      }),
+      // Desktop has its own Vite HTML entry/output layout. The web OG
+      // prerenderer reads dist/index.html and fails desktop builds with ENOENT.
+      ...(effectiveMode === "desktop"
+        ? []
+        : [prerenderOgPlugin({
+            isSaas: effectiveMode === "saas",
+            precompress: true,
+          })]),
     ],
     // Worker bundles are a separate Rollup pass and do NOT inherit `plugins`,
     // so without this `@editor/*` resolves in the app and fails in a worker.
