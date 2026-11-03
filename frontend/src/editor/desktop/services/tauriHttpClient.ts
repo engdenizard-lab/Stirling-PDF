@@ -267,6 +267,7 @@ class TauriHttpClient {
       // Enable certificate bypass for HTTPS to handle missing intermediate certs and self-signed certs
       const fetchOptions: RequestInit & {
         maxRedirections?: number;
+        proxy?: { noProxy: string };
         danger?: {
           acceptInvalidCerts: boolean;
           acceptInvalidHostnames: boolean;
@@ -280,6 +281,12 @@ class TauriHttpClient {
           : headers,
         body,
         ...(localProcessingOnly ? { maxRedirections: 0 } : {}),
+        // The bundled Spring server listens on a dynamic loopback port. Never
+        // forward those requests (including OCR uploads) through a corporate
+        // HTTP_PROXY/HTTPS_PROXY; remote URLs still use normal proxy behavior.
+        ...(/^http:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?\//.test(url)
+          ? { proxy: { noProxy: "localhost,127.0.0.1,::1" } }
+          : {}),
         credentials,
         ...(finalConfig.signal ? { signal: finalConfig.signal } : {}),
       };
