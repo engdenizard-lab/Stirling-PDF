@@ -54,33 +54,24 @@ const LanguagePicker: React.FC<LanguagePickerProps> = ({
       try {
         let languages: string[] = [];
         let firstError: unknown;
-        try {
-          const response = await apiClient.get<{ languages: string[] }>(languagesEndpoint);
-          languages = Array.isArray(response.data?.languages) ? response.data.languages : [];
-        } catch (error) {
-          firstError = error;
+        const { isTauri, invoke } = await import("@tauri-apps/api/core");
+        if (isTauri()) {
+          // The portable build can enumerate bundled .traineddata directly.
+          // Do not depend on a dynamic backend port or proxy for UI metadata.
+          try {
+            languages = await invoke<string[]>("get_bundled_ocr_languages");
+          } catch (error) {
+            firstError = error;
+          }
         }
-
-        // In desktop builds the generic operation router can reject an early
-        // request as "backend offline" even though the Java server is already
-        // listening on a dynamically assigned loopback port. The local OCR
-        // metadata is safe to request directly, with the corporate proxy bypassed.
         if (languages.length === 0) {
-          const { isTauri } = await import("@tauri-apps/api/core");
-          if (isTauri()) {
-            const { tauriBackendService } = await import("@editor/services/tauriBackendService");
-            const backendUrl = tauriBackendService.getBackendUrl();
-            if (backendUrl) {
-              const { fetch } = await import("@tauri-apps/plugin-http");
-              const response = await fetch(`${backendUrl}${languagesEndpoint}`, {
-                method: "GET",
-                connectTimeout: 5000,
-                proxy: { noProxy: "localhost,127.0.0.1,::1" },
-              });
-              if (!response.ok) throw new Error(`HTTP ${response.status}`);
-              const payload = await response.json() as { languages?: string[] };
-              languages = Array.isArray(payload.languages) ? payload.languages : [];
-            }
+          // Server and web deployments, or desktop installations without
+          // bundled language packs, continue to use the standard API.
+          try {
+            const response = await apiClient.get<{ languages: string[] }>(languagesEndpoint);
+            languages = Array.isArray(response.data?.languages) ? response.data.languages : [];
+          } catch (error) {
+            firstError = error;
           }
         }
 
