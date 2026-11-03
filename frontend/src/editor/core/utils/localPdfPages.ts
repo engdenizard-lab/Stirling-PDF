@@ -44,3 +44,26 @@ export async function reorderPagesLocally(bytes: Uint8Array, order: number[]): P
   for (const page of pages) result.addPage(page);
   return result.save();
 }
+
+/** Rotate all PDF pages by right angles without rasterizing their content. */
+export async function rotatePagesLocally(bytes: Uint8Array, angle: number): Promise<Uint8Array> {
+  if (!Number.isFinite(angle) || angle % 90 !== 0)
+    throw new Error("A rotação deve ser um múltiplo de 90 graus");
+  const pdf = await PDFDocument.load(bytes);
+  for (const page of pdf.getPages()) {
+    const previous = page.getRotation().angle;
+    page.setRotation({ type: "degrees", angle: ((previous + angle) % 360 + 360) % 360 });
+  }
+  return pdf.save();
+}
+
+/** Preserve the original vector PDF page contents while extracting selected pages. */
+export async function extractPagesLocally(bytes: Uint8Array, pages: number[]): Promise<Uint8Array> {
+  const source = await PDFDocument.load(bytes);
+  if (!pages.length || pages.some(n => !Number.isSafeInteger(n) || n < 1 || n > source.getPageCount()))
+    throw new Error("Seleção de páginas inválida");
+  const output = await PDFDocument.create();
+  const copies = await output.copyPages(source, pages.map(page => page - 1));
+  for (const copy of copies) output.addPage(copy);
+  return output.save();
+}
