@@ -9,6 +9,7 @@ on:
       - 'frontend/vite.config.ts'
       - 'frontend/src/editor/core/components/tools/ToolPicker.tsx'
       - 'frontend/src/editor/desktop/services/tauriBackendService.ts'
+      - 'frontend/src/editor/desktop/services/tauriHttpClient.ts'
       - 'frontend/src/editor/core/components/tools/shared/**'
       - 'frontend/src/editor/core/components/tools/reorganizePages/**'
       - 'frontend/src/editor/core/components/tools/removePages/**'
