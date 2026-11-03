@@ -1,4 +1,4 @@
-import { PDFDocument } from "@cantoo/pdf-lib";
+import { PDFDocument, degrees } from "@cantoo/pdf-lib";
 
 /** Only explicit numbers and ranges are supported in the offline editor. */
 export function parseLocalPageSelection(text: string, count: number): number[] {
@@ -52,7 +52,7 @@ export async function rotatePagesLocally(bytes: Uint8Array, angle: number): Prom
   const pdf = await PDFDocument.load(bytes);
   for (const page of pdf.getPages()) {
     const previous = page.getRotation().angle;
-    page.setRotation({ type: "degrees", angle: ((previous + angle) % 360 + 360) % 360 });
+    page.setRotation(degrees(((previous + angle) % 360 + 360) % 360));
   }
   return pdf.save();
 }
