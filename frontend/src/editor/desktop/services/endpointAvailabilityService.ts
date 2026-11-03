@@ -107,9 +107,6 @@ export class EndpointAvailabilityService {
         headers: {
           "Cache-Control": "no-store",
         },
-        // Bundled backend uses a dynamic loopback port. Corporate proxies can
-        // incorrectly report local endpoints (including OCR) as unavailable.
-        proxy: { noProxy: "localhost,127.0.0.1,::1" },
       });
 
       if (!response.ok) {
