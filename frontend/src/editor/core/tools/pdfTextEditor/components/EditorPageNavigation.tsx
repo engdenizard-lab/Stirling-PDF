@@ -26,7 +26,7 @@ export function EditorPageNavigation({ pageCount }: { pageCount: number }) {
         const pages = root?.querySelectorAll<HTMLElement>('[data-testid^="pdf-editor-page-"]') ?? [];
         pages.forEach(el => {
           const id = el.dataset.testid ?? "";
-          const match = /^pdf-editor-page-(\\d+)$/.exec(id);
+          const match = /^pdf-editor-page-(\d+)$/.exec(id);
           if (!match) return;
           const rect = el.getBoundingClientRect();
           const delta = Math.abs((rect.top + rect.bottom) / 2 - viewportMid);
