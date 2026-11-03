@@ -802,6 +802,7 @@ export default function PdfTextEditor(_props: BaseToolProps) {
       {state.hasDocument && (
         <EditorPanelActions
           compact={isMobile}
+          pageCount={store.document?.pageCount ?? state.pages.length}
           openedFileName={openedFileName}
           dirty={state.dirty}
           currentFileId={sourceFileId}
