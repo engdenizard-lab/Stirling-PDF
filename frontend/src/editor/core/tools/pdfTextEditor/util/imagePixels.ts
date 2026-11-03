@@ -72,8 +72,6 @@ export function readImageObjectPixels(
         buffer + (height - 1) * stride + width * bytesPerPixel > heap.byteLength) {
       throw new Error("Invalid PDFium bitmap buffer");
     }
-    const bytesPerPixel =
-      format === FORMAT_GRAY ? 1 : format === FORMAT_BGR ? 3 : 4;
     const rgba = new Uint8Array(width * height * 4);
     for (let y = 0; y < height; y += 1) {
       let src = buffer + y * stride;
