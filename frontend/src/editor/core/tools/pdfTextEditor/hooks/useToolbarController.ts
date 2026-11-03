@@ -482,15 +482,33 @@ export function useToolbarController(
       .find(im => im.id === selection.imageIds[0]);
     if (!target?.pdfiumObjPtr || target.locked) return;
     const pixels = readImageObjectPixels(doc, target.pageIndex, target.pdfiumObjPtr);
-    if (pixels) setCropTarget({
-      pixels, imageId: target.id, pageIndex: target.pageIndex, document: doc,
-    });
+    if (pixels) {
+      setCropTarget({
+        pixels, imageId: target.id, pageIndex: target.pageIndex, document: doc,
+      });
+    } else {
+      store.setError("Não foi possível carregar os pixels desta imagem para recorte. Tente uma imagem menor ou uma cópia do PDF.");
+    }
   }, [store, selection.imageIds]);
   const onApplyImageCrop = useCallback((pixels: ImagePixels, crop: ImageCropBounds) => {
-    if (cropTarget && store.document === cropTarget.document) {
-      sel.replaceImageById(cropTarget.pageIndex, cropTarget.imageId, pixels, undefined, crop);
+    if (!cropTarget || store.document !== cropTarget.document) {
+      setCropTarget(null);
+      return;
     }
-    setCropTarget(null);
+    // Bitmap embedding into PDFium needs another native pixel buffer in
+    // addition to the image and the editor's own buffers. Refuse unsafe
+    // allocations before entering WASM, rather than risking abort().
+    const MAX_EMBED_CROP_PIXELS = 12_000_000;
+    if (pixels.width * pixels.height > MAX_EMBED_CROP_PIXELS) {
+      store.setError("Recorte muito grande para incorporar com segurança. Selecione uma área menor.");
+      return;
+    }
+    try {
+      sel.replaceImageById(cropTarget.pageIndex, cropTarget.imageId, pixels, undefined, crop);
+      setCropTarget(null);
+    } catch (error) {
+      store.setError(error instanceof Error ? error.message : String(error));
+    }
   }, [sel, cropTarget, store]);
   const onReplaceImage = useCallback(() => {
     void (async () => {
