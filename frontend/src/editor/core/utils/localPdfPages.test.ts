@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PDFDocument } from "@cantoo/pdf-lib";
-import { parseLocalPageSelection, removePagesLocally, reorderPagesLocally, validatePageOrder } from "./localPdfPages";
+import { parseLocalPageSelection, removePagesLocally, reorderPagesLocally, validatePageOrder, rotatePagesLocally, extractPagesLocally } from "./localPdfPages";
 
 async function fixture() {
   const doc = await PDFDocument.create();
@@ -24,6 +24,15 @@ describe("local PDF page operations", () => {
   it("reorders pages according to the draggable selection", async () => {
     const result = await PDFDocument.load(await reorderPagesLocally(await fixture(), [4, 2, 1, 3]));
     expect(result.getPages().map(p => p.getWidth())).toEqual([500, 300, 200, 400]);
+  });
+  it("rotates pages locally without changing their size", async () => {
+    const processed = await PDFDocument.load(await rotatePagesLocally(await fixture(), 90));
+    expect(processed.getPages().map(p => p.getRotation().angle)).toEqual([90, 90, 90, 90]);
+    expect(processed.getPages().map(p => p.getWidth())).toEqual([200, 300, 400, 500]);
+  });
+  it("extracts a selected subset locally", async () => {
+    const processed = await PDFDocument.load(await extractPagesLocally(await fixture(), [4, 2]));
+    expect(processed.getPages().map(p => p.getWidth())).toEqual([500, 300]);
   });
   it("rejects missing, duplicated or out-of-range pages", () => {
     expect(() => validatePageOrder([2, 2, 3, 4], 4)).toThrow();
