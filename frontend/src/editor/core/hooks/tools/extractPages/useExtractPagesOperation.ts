@@ -1,4 +1,3 @@
-import apiClient from "@editor/services/apiClient";
 import { useTranslation } from "react-i18next";
 import {
   defineCustomTool,
@@ -11,33 +10,13 @@ import {
   ExtractPagesParameters,
   defaultParameters,
 } from "@editor/hooks/tools/extractPages/useExtractPagesParameters";
-import { pdfWorkerManager } from "@editor/services/pdfWorkerManager";
-import { parseSelection } from "@editor/utils/bulkselection/parseSelection";
-
-// Convert advanced page selection expression into CSV of explicit one-based page numbers
-async function resolveSelectionToCsv(
-  expression: string,
-  file: File,
-): Promise<string> {
-  // Load PDF to determine max pages
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfWorkerManager.createDocument(arrayBuffer, {
-    disableAutoFetch: true,
-    disableStream: true,
-  });
-  try {
-    const maxPages = pdf.numPages;
-    const pages = parseSelection(expression || "", maxPages);
-    return pages.join(",");
-  } finally {
-    pdfWorkerManager.destroyDocument(pdf);
-  }
-}
+import { parseSelectionWithDiagnostics } from "@editor/utils/bulkselection/parseSelection";
+import { extractPagesLocally } from "@editor/utils/localPdfPages";
+import { PDFDocument } from "@cantoo/pdf-lib";
 
 export const extractPagesOperationConfig = defineCustomTool({
   validateParams: validateExtractPagesParameters,
   operationType: "extractPages",
-  endpoint: "/api/v1/general/rearrange-pages",
   customProcessor: async (
     parameters: ExtractPagesParameters,
     files: File[],
@@ -45,23 +24,13 @@ export const extractPagesOperationConfig = defineCustomTool({
     const outputs: File[] = [];
 
     for (const file of files) {
-      // Resolve selection into CSV acceptable by backend
-      const csv = await resolveSelectionToCsv(parameters.pageNumbers, file);
-
-      const formData = new FormData();
-      formData.append("fileInput", file);
-      formData.append("pageNumbers", csv);
-
-      const response = await apiClient.post(
-        "/api/v1/general/rearrange-pages",
-        formData,
-        { responseType: "blob" },
-      );
-
-      // Name output file with suffix
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const source = await PDFDocument.load(bytes);
+      const selected = parseSelectionWithDiagnostics(parameters.pageNumbers, source.getPageCount(), { strict: true }).pages;
+      if (selected.length === 0) throw new Error("Nenhuma página válida selecionada");
+      const outputBytes = await extractPagesLocally(bytes, selected);
       const base = (file.name || "document.pdf").replace(/\.[^.]+$/, "");
-      const outName = `${base}_extracted_pages.pdf`;
-      const outFile = new File([response.data], outName, {
+      const outFile = new File([new Uint8Array(outputBytes)], `${base}_extracted_pages.pdf`, {
         type: "application/pdf",
       });
       outputs.push(outFile);
