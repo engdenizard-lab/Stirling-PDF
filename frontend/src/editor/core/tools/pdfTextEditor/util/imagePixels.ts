@@ -38,9 +38,10 @@ export function readImageObjectPixels(
   const m = doc.module;
   const mod = m as unknown as ImageBitmapModule;
   const page = doc.page(pageIndex);
-  // Any pending edit has to be in the content stream before PDFium will
-  // rasterise the object as the user currently sees it.
-  page.flushGenerate(m);
+  // The image object pointer belongs to the live editor page. Generating the
+  // content stream here is unnecessary for FPDFImageObj_GetBitmap and can
+  // invalidate native object references while the crop operation still uses
+  // the previously selected object. Save/render handles pending generation.
 
   let bitmap = 0;
   try {
@@ -58,8 +59,19 @@ export function readImageObjectPixels(
     const buffer = mod.FPDFBitmap_GetBuffer?.(bitmap) ?? 0;
     const format = mod.FPDFBitmap_GetFormat?.(bitmap) ?? FORMAT_BGRA;
     if (width <= 0 || height <= 0 || stride <= 0 || !buffer) return null;
+    // Guard against runaway JS allocations when native PDFium returns a huge
+    // bitmap. A 16 MP image already requires at least 64 MB of RGBA output.
+    const MAX_CROP_PIXELS = 16_000_000;
+    if (!Number.isSafeInteger(width * height) || width * height > MAX_CROP_PIXELS) {
+      throw new Error("Crop image exceeds the safe pixel budget");
+    }
 
     const heap = heapView(m);
+    const bytesPerPixel = format === FORMAT_GRAY ? 1 : format === FORMAT_BGR ? 3 : 4;
+    if (stride < width * bytesPerPixel ||
+        buffer + (height - 1) * stride + width * bytesPerPixel > heap.byteLength) {
+      throw new Error("Invalid PDFium bitmap buffer");
+    }
     const bytesPerPixel =
       format === FORMAT_GRAY ? 1 : format === FORMAT_BGR ? 3 : 4;
     const rgba = new Uint8Array(width * height * 4);
@@ -84,7 +96,8 @@ export function readImageObjectPixels(
       }
     }
     return { rgba, width, height };
-  } catch {
+  } catch (error) {
+    console.error("[ImageCrop] Unable to extract native image pixels", error);
     return null;
   } finally {
     if (bitmap) {
